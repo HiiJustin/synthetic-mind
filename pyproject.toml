@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "synthetic-mind"
+version = "0.14.1"
+description = "Persistent, deterministic embodied cognition laboratory"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+synthetic-mind = "synthetic_mind.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920,height=1080">
+<title>Autonomous Minecraft Stream Overlay</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent;color:#dce9ef;font-family:Consolas,"Courier New",monospace}
+:root{--cyan:#20e6ff;--violet:#a56cff;--dim:#52707c;--panel:rgba(5,12,17,.84);--line:rgba(32,230,255,.55)}
+.overlay{position:relative;width:100%;height:100%;pointer-events:none}
+.scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px);opacity:.45}
+.vignette{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 55%,rgba(0,0,0,.35) 100%)}
+.panel{position:absolute;background:var(--panel);border:1px solid var(--line);box-shadow:0 0 18px rgba(32,230,255,.07),inset 0 0 20px rgba(32,230,255,.025);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+.panel:before{content:"";position:absolute;left:0;top:0;width:42%;height:2px;background:linear-gradient(90deg,var(--cyan),transparent)}
+.header{position:absolute;left:28px;top:24px;width:610px;height:76px;padding:13px 22px}
+.brand{font-size:23px;letter-spacing:3px;color:#f0fbff}.sub{font-size:12px;letter-spacing:4px;color:var(--violet);margin-top:5px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);margin-right:9px;animation:pulse 1.3s infinite}
+.right{right:24px;width:385px;padding:18px 20px}.terminal{top:24px;height:320px}.chat{top:362px;height:390px}.title{font-size:14px;letter-spacing:3px;color:#eafcff;border-bottom:1px solid rgba(32,230,255,.18);padding-bottom:10px;margin-bottom:10px}.title span{color:var(--cyan)}
+.termline{font-size:12px;line-height:1.65;white-space:nowrap;overflow:hidden}.prompt{color:var(--cyan)}.ok{color:#72f0b0}.warn{color:#ffd36e}.muted{color:#718995}
+.term-cursor{display:inline-block;width:7px;height:13px;background:var(--cyan);vertical-align:-2px;animation:blink .8s infinite}
+.chatinner{font-family:Arial,sans-serif;font-size:14px;line-height:1.45}.msg{margin:9px 0;padding-left:9px;border-left:2px solid rgba(165,108,255,.55)}.name{color:#b78cff;font-weight:bold}.msg small{color:#718995}.placeholder{color:#6e8791;font-family:Consolas;font-size:12px}
+.status{left:28px;bottom:26px;width:430px;height:150px;padding:17px 20px}.goal{left:480px;bottom:26px;width:970px;height:150px;padding:17px 22px}.stats{right:24px;bottom:26px;width:385px;height:150px;padding:17px 20px}
+.row{display:flex;align-items:center;margin:10px 0;font-size:12px}.label{width:115px;color:#8aa6b1;letter-spacing:1px}.value{color:#e9fbff}.meter{height:7px;flex:1;border:1px solid rgba(32,230,255,.3);margin-left:10px;background:rgba(255,255,255,.03);overflow:hidden}.fill{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 12px rgba(32,230,255,.4);transition:width .5s}
+.goaltext{font-size:18px;color:#f2fbff;margin:12px 0}.goalbar{height:12px;border:1px solid rgba(32,230,255,.4);background:rgba(0,0,0,.3);overflow:hidden}.goalfill{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--violet));transition:width .5s}.corner{position:absolute;width:12px;height:12px;border-color:var(--violet);border-style:solid}.tl{left:-1px;top:-1px;border-width:2px 0 0 2px}.br{right:-1px;bottom:-1px;border-width:0 2px 2px 0}
+.badge{position:absolute;right:18px;top:17px;color:#6e8791;font-size:10px;letter-spacing:2px}.live{color:#ff5d72}.counter{font-size:23px;color:#f0fbff;letter-spacing:2px}.tiny{font-size:10px;color:#718995;letter-spacing:2px}.flash{animation:flash .15s}
+@keyframes pulse{50%{opacity:.35;box-shadow:none}}@keyframes blink{50%{opacity:0}}@keyframes meter{to{width:81%}}@keyframes goal{0%,100%{width:0%}45%{width:51%}72%{width:46%}}@keyframes flash{50%{opacity:.2}}
+.stats .row{margin:5px 0}.counter{font-size:18px}.goaltext{font-size:16px;max-height:48px;overflow:hidden}.chatinner{font-size:12px;line-height:1.35;max-height:295px;overflow:hidden}.placeholder{font-size:11px}.termline{font-size:11px}.fill,.goalfill{animation:none}
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="scan"></div><div class="vignette"></div>
+
+  <div class="panel header">
+    <div><span class="dot"></span><span class="brand">AUTONOMOUS MINECRAFT</span></div>
+    <div class="sub">// LIVE LEARNING EXPERIMENT</div>
+    <div class="badge">CONNECTING</div>
+  </div>
+
+  <div class="panel right terminal">
+    <div class="title"><span>▸</span> AGENT TERMINAL</div>
+    <div id="terminal"></div>
+    <div class="termline muted">&gt; <span id="typing"></span><span class="term-cursor"></span></div>
+  </div>
+
+  <div class="panel right chat">
+    <div class="title"><span>◈</span> MODULE REPORTS</div>
+    <div id="chat" class="chatinner"></div>
+    <div id="feednote" class="placeholder">Connecting to local telemetry…</div>
+  </div>
+
+  <div class="panel status">
+    <div class="title"><span>●</span> AI STATUS</div>
+    <div class="row"><div class="label">AGENT</div><div id="online" class="value ok">CONNECTING</div></div>
+    <div class="row"><div class="label">SAMPLED</div><div class="meter"><div class="fill"></div></div></div>
+    <div class="row"><div class="label">MODE</div><div class="value" id="mode">CONNECTING</div></div>
+  </div>
+
+  <div class="panel goal">
+    <div class="title"><span>◎</span> CURRENT OBJECTIVE <span id="goalnum" style="float:right;color:#718995">01</span></div>
+    <div class="goaltext" id="goal">Waiting for live objective</div>
+    <div class="goalbar"><div class="goalfill"></div></div>
+  </div>
+
+  <div class="panel stats">
+    <div class="title"><span>▦</span> EXPERIMENT TELEMETRY</div>
+    <div class="row"><div class="label">CHANNELS</div><div class="counter" id="episode">—</div></div>
+    <div class="row"><div class="label">SESSION</div><div class="counter" id="survival">—</div></div>
+    <div class="row"><div class="label">RESULTS</div><div class="counter" id="actions">—</div></div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id),put=(id,v)=>$(id).textContent=v;
+const endpoint=location.protocol==='file:'?'http://127.0.0.1:8765/api/stream':'/api/stream';
+function line(parent,message,cls='termline'){const d=document.createElement('div');d.className=cls;d.textContent=message;parent.appendChild(d)}
+function duration(seconds){return [Math.floor(seconds/3600),Math.floor(seconds/60)%60,Math.floor(seconds)%60].map(x=>String(x).padStart(2,'0')).join(':')}
+async function update(){try{
+ const response=await fetch(endpoint,{cache:'no-store'});if(!response.ok)throw Error('Telemetry unavailable');
+ const d=await response.json(),s=d.state,b=s['minecraft.sensed']||{},w=s['council.winner']||{},models=s['sensorimotor.models']||{};
+ const age=d.server_time-(s['minecraft.sensed_at']||0),online=!!s['minecraft.connection']?.connected&&age<5;
+ put('online',online?'CONNECTED':'OFFLINE / STALE');document.querySelector('.badge').textContent=online?'LIVE TELEMETRY':'FEED STALE';
+ put('mode',online?(s['minecraft.autonomous']?'AUTONOMOUS':'PAUSED'):'DISCONNECTED');
+ put('goal',s['brain.goal']||'No objective recorded');
+ put('goalnum','HEALTH '+(b.health??'—')+'/20 · FOOD '+(b.food??'—')+'/20');
+ document.querySelector('.goalfill').style.width=Math.max(0,Math.min(100,(b.health||0)*5))+'%';
+ const calibrated=Object.values(models).filter(m=>m.samples>=2).length;
+ document.querySelector('.fill').style.width=Math.min(100,calibrated/13*100)+'%';
+ put('episode',calibrated+' / 13');
+ put('survival',d.session_started?duration(Math.max(0,d.server_time-Date.parse(d.session_started)/1000)):'—');
+ put('actions',Number(d.action_results).toLocaleString());
+ put('typing',online?(s['brain.busy']?'planner / critic processing':w.role+' → '+w.skill):'Waiting for fresh observations');
+ const terminal=$('terminal');terminal.replaceChildren();
+ for(const e of d.events.slice(0,8).reverse()){
+  const c=e.content||{};let message=e.kind;
+  if(e.kind==='survival.lesson')message=(c.action||'experience')+' · '+(c.lesson||(c.success?'verified':'failed / cooling down'));
+  else if(e.kind==='muscle.learned')message=(c.channel||'muscle')+' · '+(c.valid===false?'inhibited sample':'effect recorded');
+  else if(e.kind==='brain.review')message='critic · '+(c.approved?'approved':'rejected');
+  else if(e.kind==='minecraft.command_error')message='body · '+(c.message||'action inhibited');
+  else if(e.kind==='learning.outcome')message='experiment · '+(c.primitive||c.action||'outcome');
+  line(terminal,new Date(e.timestamp).toLocaleTimeString()+' '+message);
+ }
+ const chat=$('chat');chat.replaceChildren();
+ line(chat,'WINNING MODULE','muted');line(chat,(w.role||'Waiting')+' / '+(w.skill||'observe'),'msg');
+ line(chat,w.reason||'Awaiting a decision','msg');
+ const decision=s['brain.last_decision'];if(decision){line(chat,'LATEST PLANNER REPORT','muted');line(chat,decision.observation||'','msg');}
+ line(chat,s['survival.latest']?('Latest result: '+s['survival.latest'].action+' · '+(s['survival.latest'].success?'verified':'failed')):(s['sensorimotor.discovery']||'Collecting experience'),'msg');
+ const build=s['survival.build'];if(build?.blocks)line(chat,'Shelter: '+build.completed.length+'/'+build.blocks.length+' blocks verified','msg');
+ line(chat,'Deaths: '+(s['survival.deaths']||0)+' · '+(s['survival.sleeping']?'Sleeping':s['survival.enabled']?'Assisted routines + learned muscles':'Muscle learning'),'muted');
+ const camera=d.camera;put('feednote',s['brain.last_error']?'MODEL: '+s['brain.last_error']:camera&&d.server_time*1000-camera.timestamp<2000?(camera.clear?'Camera: clear line of sight':'Camera: view obstructed; holding position'):'Live module reports · not Twitch chat');
+ if(!online)put('feednote','Observations are stale; displayed values are the last recorded state.');
+ }catch(e){put('online','DISCONNECTED');put('mode','FEED OFFLINE');document.querySelector('.badge').textContent='NO LIVE DATA';put('feednote','Feed unavailable: '+e.message+'. Use the hosted overlay URL in OBS.');}
+ finally{setTimeout(update,1500)}}update();
+</script></body></html>

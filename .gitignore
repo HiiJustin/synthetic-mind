@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+data/
+*.egg-info/
+node_modules/
+minecraft/server/
+work/
+
+backups/
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm
+*.log

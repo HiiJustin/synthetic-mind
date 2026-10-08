@@ -1,0 +1,29 @@
+[runtime]
+database = "data/state.db"
+log_file = "data/events.jsonl"
+housekeeping_seconds = 5.0
+max_pending = 2048
+max_hops = 24
+max_events_per_drain = 4096
+
+[workspace]
+capacity = 7
+ignition_threshold = 0.56
+retention_threshold = 0.30
+support_gain = 0.15
+decay = 0.88
+max_candidates = 64
+max_age_seconds = 300.0
+
+[governor]
+calls_per_minute = 6
+tokens_per_minute = 4096
+max_concurrent = 1
+max_seconds_per_call = 10.0
+
+[body]
+vision_radius = 2
+hunger_per_action = 0.025
+
+[modules]
+enabled = ["perception", "salience", "workspace", "memory", "body_model", "prediction", "planner", "critic", "executive", "self_model", "homeostasis", "actuator"]

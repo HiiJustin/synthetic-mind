@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "architecture": "council",
+  "model": "qwen3-vl:8b-instruct-q4_K_M",
+  "interval_seconds": 30,
+  "calls_per_minute": 4,
+  "tokens_per_minute": 10000,
+  "max_output_tokens": 640,
+  "developmental": true
+}

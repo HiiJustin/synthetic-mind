@@ -1,0 +1,16 @@
+{
+  "name": "synthetic-mind-minecraft-bridge",
+  "version": "0.0.2",
+  "private": true,
+  "description": "Local Minecraft Java sensory and motor bridge",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "mineflayer": "4.39.0",
+    "mineflayer-pathfinder": "2.4.5"
+  }
+}
