@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img">
+<title>One body. Many cognitive modules.</title><desc>Logical modules share persistent state and an event bus; they do not each load a model.</desc>
+<rect width="1200" height="460" rx="20" fill="#101c2e"/>
+<text x="40" y="55" fill="white" font-family="Arial" font-size="30" font-weight="bold">One body. Many cognitive modules.</text>
+<text x="40" y="90" fill="#b5c8df" font-family="Arial" font-size="18">Logical modules share persistent state and an event bus; they do not each load a model.</text>
+<rect x="40" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="56" y="179" fill="#62dcc8" font-family="Arial" font-size="22">01 / Sense</text>
+<text x="56" y="220" fill="white" font-family="Arial" font-size="17">Blocks, entities, sounds</text>
+<text x="56" y="251" fill="#b5c8df" font-family="Arial" font-size="17">Health, hunger, position</text>
+<path d="M304,211 h15 l-6,-5 m6,5 l-6,5" stroke="#62dcc8" fill="none" stroke-width="2"/>
+<rect x="325" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="341" y="179" fill="#62dcc8" font-family="Arial" font-size="22">02 / Compete</text>
+<text x="341" y="220" fill="white" font-family="Arial" font-size="17">Needs, curiosity, memory</text>
+<text x="341" y="251" fill="#b5c8df" font-family="Arial" font-size="17">Shared-model deliberation</text>
+<path d="M589,211 h15 l-6,-5 m6,5 l-6,5" stroke="#62dcc8" fill="none" stroke-width="2"/>
+<rect x="610" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="626" y="179" fill="#62dcc8" font-family="Arial" font-size="22">03 / Act</text>
+<text x="626" y="220" fill="white" font-family="Arial" font-size="17">Arbiter, critic, executive</text>
+<text x="626" y="251" fill="#b5c8df" font-family="Arial" font-size="17">One bounded body action</text>
+<path d="M874,211 h15 l-6,-5 m6,5 l-6,5" stroke="#62dcc8" fill="none" stroke-width="2"/>
+<rect x="895" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="911" y="179" fill="#62dcc8" font-family="Arial" font-size="22">04 / Reflect</text>
+<text x="911" y="220" fill="white" font-family="Arial" font-size="17">Measure actual outcomes</text>
+<text x="911" y="251" fill="#b5c8df" font-family="Arial" font-size="17">Store evidence and errors</text>
+<path d="M1025,296 V335 H170 V299 l-5,7 m5,-7 l5,7" stroke="#62dcc8" stroke-width="2" fill="none"/>
+<text x="600" y="385" text-anchor="middle" fill="white" font-family="Arial" font-size="18">New observations inform the next decision. Speech is not proof of action.</text>
+<text x="600" y="430" text-anchor="middle" fill="#b5c8df" font-family="Arial" font-size="14">SYNTHETIC MIND / v0.14.1 / experimental prototype</text>
+</svg>

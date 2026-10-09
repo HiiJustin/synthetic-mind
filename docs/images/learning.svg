@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img">
+<title>From a muscle pulse to an observed effect</title><desc>The learner estimates opaque channel effects from actual before-and-after observations.</desc>
+<rect width="1200" height="460" rx="20" fill="#101c2e"/>
+<text x="40" y="55" fill="white" font-family="Arial" font-size="30" font-weight="bold">From a muscle pulse to an observed effect</text>
+<text x="40" y="90" fill="#b5c8df" font-family="Arial" font-size="18">The learner estimates opaque channel effects from actual before-and-after observations.</text>
+<rect x="40" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="56" y="179" fill="#62dcc8" font-family="Arial" font-size="22">01 / Experiment</text>
+<text x="56" y="220" fill="white" font-family="Arial" font-size="17">Select an opaque channel</text>
+<text x="56" y="251" fill="#b5c8df" font-family="Arial" font-size="17">Example: m2 for 350 ms</text>
+<path d="M304,211 h15 l-6,-5 m6,5 l-6,5" stroke="#62dcc8" fill="none" stroke-width="2"/>
+<rect x="325" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="341" y="179" fill="#62dcc8" font-family="Arial" font-size="22">02 / Observe</text>
+<text x="341" y="220" fill="white" font-family="Arial" font-size="17">Compare before and after</text>
+<text x="341" y="251" fill="#b5c8df" font-family="Arial" font-size="17">Displacement or no effect</text>
+<path d="M589,211 h15 l-6,-5 m6,5 l-6,5" stroke="#62dcc8" fill="none" stroke-width="2"/>
+<rect x="610" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="626" y="179" fill="#62dcc8" font-family="Arial" font-size="22">03 / Estimate</text>
+<text x="626" y="220" fill="white" font-family="Arial" font-size="17">Update effect + uncertainty</text>
+<text x="626" y="251" fill="#b5c8df" font-family="Arial" font-size="17">Retain contextual evidence</text>
+<path d="M874,211 h15 l-6,-5 m6,5 l-6,5" stroke="#62dcc8" fill="none" stroke-width="2"/>
+<rect x="895" y="140" width="260" height="150" rx="12" fill="#20364e" stroke="#466682"/>
+<text x="911" y="179" fill="#62dcc8" font-family="Arial" font-size="22">04 / Reuse</text>
+<text x="911" y="220" fill="white" font-family="Arial" font-size="17">Select a measured effect</text>
+<text x="911" y="251" fill="#b5c8df" font-family="Arial" font-size="17">Check the next outcome</text>
+<path d="M1025,296 V335 H170 V299 l-5,7 m5,-7 l5,7" stroke="#62dcc8" stroke-width="2" fill="none"/>
+<text x="600" y="385" text-anchor="middle" fill="white" font-family="Arial" font-size="18">Interventions and uncertain results must not become invented successes.</text>
+<text x="600" y="430" text-anchor="middle" fill="#b5c8df" font-family="Arial" font-size="14">SYNTHETIC MIND / v0.14.1 / experimental prototype</text>
+</svg>

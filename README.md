@@ -1,24 +1,64 @@
 # Synthetic Mind
 
-Experimental modular embodied cognition in Minecraft Java 1.21.4. Current version: 0.14.1.
+**An embodied cognition laboratory inside Minecraft.**
 
-Separate perception, memory, motivation, workspace, self-model, critic, executive, and learning modules share a local model backend. Opaque muscle channels are sampled and their observed effects retained. Supplied navigation and survival routines are scaffolding, distinct from learned effects. This project does not establish consciousness or general autonomous competence.
+![The modular perception, decision, action and feedback loop](docs/images/architecture.svg)
 
-## Setup
+What happens when a persistent system senses a world, builds memories, competes over intentions, acts through a body, and measures what its actions actually changed?
 
-Requires Windows, Python 3.12+, Node.js 22+, Java 21+ and Ollama for local model deliberation. The configured model is `qwen3-vl:8b-instruct-q4_K_M`.
+Minecraft supplies the environment. Separate modules handle perception, needs, attention, memory, self-model, criticism and action selection. A shared local language model provides occasional deliberation. The system exposes its decisions and failures so they can be studied.
 
-Run `MINECRAFT_SETUP.cmd` and follow its prompts, including reviewing Minecraft's EULA. Run `STREAM_START.cmd` to start the server and bot with autonomy enabled, or `MINECRAFT_START.cmd` for the regular console. Run `MIND_DASHBOARD.cmd` for the dashboard at http://127.0.0.1:8765/; `/overlay` is the stream overlay.
+**v0.14.1 · Experimental · Windows-first · Local inference**
 
-The existing prototype recognizes `firmlygrasp1t` as its operator; change the operator checks in `src/synthetic_mind/minecraft.py`, `minecraft/bridge.js`, and `tools/observer_camera.py` if using another account. Operator chat: `!start`, `!stop`, `!shutdown`, `!camera`. Review the architecture and source before exposing the offline-authentication server to a network.
+Navigation can still loop within a small area. Reliable overnight autonomy and complete house construction have not been demonstrated. This project makes no claim of consciousness.
 
-This repository excludes Minecraft server binaries/world saves, installed dependencies, runtime logs, learning databases, and machine-specific deployment reports. They remain in the original installation.
+## Start here
 
-## Current limitations
+| Guide | Contents |
+| --- | --- |
+| [Installation and LLM setup](docs/SETUP.md) | Required software, exact Ollama model, configuration, Minecraft connection |
+| [Controls and streaming](docs/OPERATING.md) | Goals, console/chat commands, spectator camera, OBS, troubleshooting |
+| [Architecture](ARCHITECTURE.md) | Implementation and module relationships |
+| [Engineering handoff](HANDOFF.md) | Confirmed repairs and the remaining navigation loop |
 
-The bot can still loop within a small area and repeatedly select unreachable destinations. It is NOT validated for overnight unattended operation or reliable house completion. See `HANDOFF.md` for the exact known failure and repairs.
+## How it works
 
-## Tests
+Specialists propose intentions using current observations and remembered outcomes. An arbiter selects; criticism and the executive constrain the action; a Node/Mineflayer body executes. Feedback returns through the event bus and is retained in SQLite.
+
+Multiple agents do **not** mean multiple model copies. Most modules are deterministic Python components. Planner and cognitive critic share one Ollama backend. Body movement and the observer camera operate separately from model inference.
+
+![The opaque muscle-channel learning cycle](docs/images/learning.svg)
+
+## Learning versus supplied abilities
+
+| Observed or learned | Supplied by the implementation |
+| --- | --- |
+| Muscle-effect estimates and uncertainty | Underlying channel-to-control wiring |
+| Outcome records and reliability estimates | Navigation, harvesting, crafting and placement routines |
+| Damage associations when attributable | Hostile-type lists and survival priorities |
+| Persistent episodes and spatial observations | House blueprint and arbitration rules |
+
+Learning means persistent estimates and outcome-dependent choices, not model-weight training. Supplied routines create experiences; their existence is not evidence that the agent independently invented crafting or building.
+
+## Current capabilities
+
+- Observe nearby blocks and entities through range, field-of-view and occlusion filters.
+- Receive abstract sound events, nearby chat, collisions, position, inventory, health and hunger.
+- Experiment with bounded muscle pulses and retain measured effects.
+- Select supplied navigation, harvesting, crafting, placement, eating, sleep and defensive actions when prerequisites are met.
+- Show state and recent decisions in a dashboard and OBS overlay.
+
+Vision is structured game data, not screenshots. Hearing is game-event data, not microphone audio. The vision-capable model name does not mean images are sent to it in this implementation.
+
+## Honest limits and evidence
+
+The remaining observed failure is repetitive exploration: the bot moves but stays in a small area and retries unreachable destinations. A responsive controller and plausible speech do not establish meaningful goal progress.
+
+At the last code update, **93 Python tests passed**, including a repeated-action controller-stall regression. **25 Node tests passed** on the unchanged v0.14 body code. Short tests are not overnight validation.
+
+World saves, learning databases, dependencies and machine-specific logs are excluded from Git. The server is intended for loopback use with offline authentication. Follow the setup guide before using an existing installation.
+
+## Development
 
 ```powershell
 $env:PYTHONPATH = "src"
@@ -28,6 +68,4 @@ npm install
 npm test
 ```
 
-Latest validation: 93 Python tests passed on v0.14.1; 25 Node tests passed on the unchanged v0.14 body code. No 12-hour validation claim.
-
-Third-party dependency notices are in `THIRD_PARTY_NOTICES.txt`. No project-wide open-source license has been selected.
+Read [HANDOFF.md](HANDOFF.md) before changing behavior. Preserve the distinction between supplied capabilities and measured learning. See [third-party notices](THIRD_PARTY_NOTICES.txt). No project-wide open-source license has been selected.
