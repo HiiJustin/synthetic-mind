@@ -4,7 +4,7 @@ const { distance, lineVisible } = require('./senses')
 const ACTIONS = ['inventory', 'equip', 'dig', 'place', 'inspect_container', 'take', 'use_block', 'use_item']
 const MATERIALS = /^(dirt|cobblestone|oak_planks|oak_log|birch_log|spruce_log)$/
 const items = bot => bot.inventory.items().map(item => ({ name: item.name, count: item.count }))
-const snapshot = bot => ({ inventory: items(bot), held: bot.heldItem ? bot.heldItem.name : null, food: bot.food })
+const snapshot = bot => ({ inventory: items(bot), held: bot.heldItem ? bot.heldItem.name : null, food: bot.food, health: bot.health, position:bot.entity?.position ? {x:bot.entity.position.x,y:bot.entity.position.y,z:bot.entity.position.z}:undefined })
 
 function validateHands (command) {
   if (['equip', 'place', 'take'].includes(command.action) && (typeof command.item !== 'string' || !/^[a-z0-9_]{1,64}$/.test(command.item))) throw new Error('Specify an item name')
@@ -48,7 +48,9 @@ async function executeHands (bot, command, check = () => {}) {
     } else if (command.action === 'dig') {
       // No underfoot excavation, falling blocks, fluids, containers or unbounded mining.
       if (block.diggable === false) throw new Error('The game marks this block unbreakable')
-      await bot.dig(block)
+      let timer
+      try { await Promise.race([bot.dig(block),new Promise((_,reject)=>{timer=setTimeout(()=>{bot.stopDigging();reject(new Error('Dig pulse ended before block broke'))},7500)})]) }
+      finally { clearTimeout(timer) }
       check()
       const after = bot.blockAt(block.position)
       evidence = { block_before: block.name, block_after: after?.name, verified: Boolean(after && after.name !== block.name) }

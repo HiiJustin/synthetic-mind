@@ -218,11 +218,12 @@ class EventLog:
                 "deliveries": [dict(row) for row in self.db.connection.execute("SELECT module,status,error FROM deliveries WHERE event_id=?", (event_id,))],
                 "module_traces": [json.loads(row[0]) for row in self.db.connection.execute("SELECT body FROM module_traces WHERE event_id=?", (event_id,))]}
 
-    def export(self, path: Path) -> None:
+    def export(self, path: Path, limit: int | None = None) -> None:
         """Regenerate a diagnostic export from the authoritative SQLite history."""
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".tmp")
         with temporary.open("w", encoding="utf-8") as stream:
-            for row in self.db.connection.execute("SELECT body FROM events ORDER BY seq"):
+            query = "SELECT body FROM events ORDER BY seq" if limit is None else "SELECT body FROM (SELECT seq,body FROM events ORDER BY seq DESC LIMIT ?) ORDER BY seq"
+            for row in self.db.connection.execute(query, () if limit is None else (limit,)):
                 stream.write(row[0] + "\n")
         temporary.replace(path)

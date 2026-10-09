@@ -64,7 +64,7 @@ class ObserverCamera:
                 stream.seek(0,2)
                 while not self.end.wait(.1):
                     for line in stream.readlines():
-                        match=re.search(r'\[Server thread/INFO\]: <([A-Za-z0-9_]{1,16})> (!camera[^\r\n]*)$',line)
+                        match=re.search(r'\[Server thread/INFO\]: (?:\[Not Secure\] )?<([A-Za-z0-9_]{1,16})> (!camera[^\r\n]*)$',line)
                         if not match:continue
                         player,command=match.groups();arg=command.lower().split()[1:]
                         if arg and arg[0] in ('off','stop'):

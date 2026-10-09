@@ -86,6 +86,7 @@ class MinecraftEngine(Engine):
             self.brain_config.update(interval_seconds=self.tempo['model_interval'], calls_per_minute=self.tempo['calls_per_minute'], tokens_per_minute=self.tempo['tokens_per_minute'])
         if self.state.get("sensorimotor.developmental") is None:
             self.state.set("sensorimotor.developmental", self.brain_config.get("developmental", False))
+        self.state.set("embodied.enabled", False)
         self.state.set("brain.enabled", self.brain_config.get("enabled", False))
         self.state.set("brain.busy", False)
         self.state.set("brain.queued", False)
@@ -147,6 +148,10 @@ class MinecraftEngine(Engine):
             self.state.set("embodied.vitals", None)
             self.state.set("embodied.next_action", 0)
             self.state.set("embodied.enabled", True)
+            if self.state.get("embodied.deaths") is None: self.state.set("embodied.deaths", self.state.get("survival.deaths",0))
+            self.state.set("sensorimotor.discovery", "Opaque channels and supplied inventory skills; outcomes feed contextual selection")
+            self.state.set("council.blocked_reason", None)
+        self.state.set("runtime.active_modules", list(self.registry.modules))
         memory = self.registry.modules.get("memory")
         if memory:
             memory.subscriptions = memory.subscriptions | {"minecraft.senses", "minecraft.sound", "minecraft.action_result", "minecraft.chat", "memory.consolidated", "learning.outcome", "muscle.learned", "survival.lesson", "minecraft.damage", "minecraft.death", "minecraft.respawned"}
@@ -178,6 +183,7 @@ class MinecraftEngine(Engine):
                        "motor_learning": self.state.get("minecraft.motor_learning", {}),
                        "last_sound": self.state.get("minecraft.last_sound"), "last_error": self.state.get("minecraft.last_error"),
                        "workspace": [{"key": item["key"], "kind": item["kind"], "activation": item["activation"]} for item in self.workspace.items()]})
+        status['embodied']={key:self.state.get('embodied.'+key) for key in ('enabled','workspace','selection','feedback','goal_state','deaths')}
         return status
 
 
@@ -389,7 +395,7 @@ async def minecraft_console(session: MinecraftSession) -> None:
             elif verb == "/brain":
                 print(json.dumps(engine.status()["brain"], indent=2))
             elif verb == "/mind":
-                print(json.dumps(engine.status()["council"], indent=2))
+                print(json.dumps(engine.status()["embodied"] if engine.state.get("embodied.enabled") else engine.status()["council"], indent=2))
             elif verb == "/survival":
                 print(json.dumps({key:engine.state.get("survival."+key) for key in ("enabled","status","latest","dangers","deaths","build","weapon_trials")},indent=2))
             elif verb == "/assist":
@@ -414,7 +420,7 @@ async def minecraft_console(session: MinecraftSession) -> None:
                     raise ValueError("Use /muscle CHANNEL [350|1800|3500]")
                 await session.propose({"action": "muscle", "channel": args[0], "duration_ms": int(args[1]) if len(args) == 2 else 350})
             elif verb == "/learning":
-                print(json.dumps(engine.status()["learning"], indent=2))
+                print(json.dumps(engine.state.get("embodied.models",{}) if engine.state.get("embodied.enabled") else engine.status()["learning"], indent=2))
             elif verb == "/learn":
                 if argument not in {"on", "off"}:
                     raise ValueError("Use /learn on or /learn off")
@@ -440,7 +446,7 @@ async def minecraft_console(session: MinecraftSession) -> None:
                     command["count"] = int(parts[1])
                 await session.propose(command)
             elif verb == "/skills":
-                print(json.dumps(engine.state.get("council.skills", {}), indent=2))
+                print(json.dumps(engine.state.get("embodied.skills",{}) if engine.state.get("embodied.enabled") else engine.state.get("council.skills", {}), indent=2))
             elif verb in {"/goal", "/think"}:
                 if not engine.state.get("brain.enabled"):
                     raise ValueError("Local brain disabled; enable config/brain.json")

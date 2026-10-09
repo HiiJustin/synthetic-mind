@@ -7,7 +7,7 @@ const { configValid, observe, heardSound, validateCommand, distance, motorProxim
 const mineflayer = require('mineflayer')
 const { ACTIONS, validateHands, executeHands, snapshot } = require('./hands')
 const survival = require('./survival-body')
-const { CHANNELS, validateMuscle, activateMuscle } = require('./muscle-body')
+const { CHANNELS, validateMuscle, activateMuscle, proprioception } = require('./muscle-body')
 let actionEpoch = 0
 const config = configValid(JSON.parse(fs.readFileSync(process.argv[2] || path.join(__dirname, 'config.json'), 'utf8')))
 const send = (kind, content) => process.stdout.write(JSON.stringify({ protocol: 1, kind, content }) + '\n')
@@ -164,8 +164,11 @@ input.on('line', async line => {
       return
     } else if (command.action === 'look') {
       busy = true
+      const before = proprioception(bot)
       await bot.look(command.yaw, command.pitch, false)
       busy = false
+      send('minecraft.action_result', {command_id:command.id,action:'look',before,after:proprioception(bot),verified:true})
+      return
     }
     else if (command.action === 'say') bot.chat(command.text)
     else if (command.action === 'muscle') {

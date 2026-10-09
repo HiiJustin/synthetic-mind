@@ -140,7 +140,7 @@ class MuscleLearningAgent:
         effects = {}
         if valid:
             dx, dy, dz = [after['position'][k] - before['position'][k] for k in ('x', 'y', 'z')]
-            if math.sqrt(dx*dx + dy*dy + dz*dz) > 3:
+            if math.sqrt(dx*dx + dy*dy + dz*dz) > max(3, active['duration_ms']/1000*7):
                 valid = False  # Teleport/large external displacement is not a motor lesson.
             else:
                 yaw = before['yaw']

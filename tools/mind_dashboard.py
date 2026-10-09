@@ -17,7 +17,7 @@ from synthetic_mind.operator_control import enqueue
 CONTROL_LOCK = threading.Lock()
 STREAM_COUNTS = {}
 
-NAMESPACES = ('embodied.enabled','embodied.workspace','embodied.feedback','embodied.selection','embodied.goal_state','embodied.deaths','adaptation.progress','adaptation.feedback','adaptation.actions','operator.last_control','learning.enabled','survival.food_status','survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
+NAMESPACES = ('runtime.active_modules','embodied.enabled','embodied.workspace','embodied.feedback','embodied.selection','embodied.goal_state','embodied.deaths','adaptation.progress','adaptation.feedback','adaptation.actions','operator.last_control','learning.enabled','survival.food_status','survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
               'minecraft.sensed_at', 'minecraft.world_id', 'cognition.drives', 'council.winner',
               'council.disagreements', 'council.blocked_reason', 'sensorimotor.models', 'sensorimotor.latest',
               'sensorimotor.discovery', 'sensorimotor.developmental', 'learning.last_lesson',
@@ -31,6 +31,8 @@ def read_snapshot(database):
         state = {name: json.loads(value) for name, value in db.execute(f'SELECT namespace,value FROM state WHERE namespace IN ({placeholders})', NAMESPACES)}
         events = [json.loads(row[0]) for row in db.execute("SELECT body FROM events WHERE kind IN ('subconscious.evaluated','embodied.selected','survival.lesson','minecraft.death','minecraft.respawned','muscle.learned','learning.outcome','runtime.module_error','minecraft.command_error','brain.review','goal.created') ORDER BY seq DESC LIMIT 20")]
         health = {name[7:]: json.loads(value) for name, value in db.execute("SELECT namespace,value FROM state WHERE namespace LIKE 'health.%'")}
+        active=state.get('runtime.active_modules')
+        if active: health={name:value for name,value in health.items() if name in active}
         return {'state': state, 'events': events, 'health': health, 'database_bytes': database.stat().st_size}
 
 

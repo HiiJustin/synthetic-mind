@@ -108,6 +108,9 @@ class WorldModel(Module):
             key=record['key'];r=models.get(key,{'samples':0,'value':0,'failures':0,'effects':{}})
             r['samples']+=1;r['failures']+=int(c.get('failed',False));r['last_trial']=time.time()
             r['no_effect']=r.get('no_effect',0)+1 if not c.get('changed') else 0
+            means=r.get('mean_effects',{})
+            for k,v in c.get('effects',{}).get('measured',{}).items():means[k]=means.get(k,0)+(v-means.get(k,0))/r['samples']
+            r['mean_effects']=means
             r['effects']=c.get('effects',{});r['evidence']=event.id;r['family']=record['family'];models[key]=r
             # Procedural records contain actual parameters and measured outcomes, not generated claims.
             skills=s.get('embodied.skills',{});skills[key]={'candidate':record.get('candidate'), 'samples':r['samples'],
@@ -123,7 +126,8 @@ class GoalMemory(Module):
         s=self.state
         if event.kind=='goal.requested':s.set('embodied.goal',event.content.get('description',''))
         if event.kind=='brain.decision':
-            if event.content.get('approved'):s.set('embodied.hypothesis',{'text':event.content.get('focus',''),'time':time.time(),'origin':'model hypothesis'})
+            if event.content.get('approved') and event.content.get('control_epoch')==s.get('brain.control_epoch'):
+                s.set('embodied.hypothesis',{'text':event.content.get('focus',''),'key':event.content.get('candidate_key'),'confidence':event.content.get('confidence',0),'time':time.time(),'origin':'model hypothesis'})
             return []
         o=s.get('embodied.observation',{});known=s.get('embodied.knowledge',{})
         goal=s.get('embodied.goal',s.get('brain.goal','explore and learn'));words=set(re.findall(r'[a-z0-9]+',goal.lower()))
@@ -170,10 +174,16 @@ class ActionSelector(Module):
             uncertainty=1/math.sqrt(1+n) if s.get('learning.enabled',True) else 0
             prior=candidate.get('prior',{});need=sum(o.get('needs',{}).get(k,0)*v for k,v in prior.get('relief',{}).items())
             goal=sum(relevant.get(k,0)*max(0,v) for k,v in prior.get('resources',{}).items())
+            effects=r.get('mean_effects',{})
+            goal+=sum(relevant.get(k[9:],0)*max(0,v) for k,v in effects.items() if k.startswith('resource:'))
+            need+=4*o.get('needs',{}).get('energy',0)*effects.get('food',0)
             gain=candidate.get('information',0)/(1+repeats) if s.get('learning.enabled',True) else 0
             score=r.get('value',0)+.7*uncertainty+need+goal+gain-.22*repeats-.12*min(8,no_effect)-.3*r.get('failures',0)/(1+n)
+            hypothesis=s.get('embodied.hypothesis',{})
+            advice=.5*hypothesis.get('confidence',0) if hypothesis.get('key')==key and now-hypothesis.get('time',0)<30 else 0
+            score+=advice
             score-=candidate.get('cost',.05)
-            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'learned':r.get('value',0),'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats}})
+            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'learned':r.get('value',0),'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats,'deliberation':advice}})
         if not ranked:return []
         ranked.sort(key=lambda r:(r['score'],r['key']),reverse=True);winner=ranked[0]
         s.set('embodied.selection',{'winner':winner,'alternatives':ranked[1:5],'time':now})

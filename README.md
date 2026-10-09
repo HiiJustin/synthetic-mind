@@ -1,5 +1,10 @@
 # Synthetic Mind
 
+## v0.16: environment-independent learning modules
+
+The default runtime now separates the Minecraft body adapter from background reward, perceptual memory, contextual outcome learning, goal memory and action selection. Includes per-player camera modes and operator server-console routing. [Architecture, controls, validation and current limitations](docs/V016_ARCHITECTURE.md).
+
+
 **An embodied cognition laboratory inside Minecraft.**
 
 ![The modular perception, decision, action and feedback loop](docs/images/architecture.svg)

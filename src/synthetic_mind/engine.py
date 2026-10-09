@@ -144,7 +144,7 @@ class Engine:
                 self._account_time()
                 self.bus.publish(CognitiveEvent("runtime", "runtime.shutdown", {"clean": True}))
                 await self.scheduler.close()
-                self.log.export(self.log_path)
+                self.log.export(self.log_path, limit=10000)  # SQLite retains complete history; shutdown exports a bounded diagnostic tail.
             finally:
                 self.db.close()
                 self.closed = True

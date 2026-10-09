@@ -12,6 +12,7 @@ from .schemas import CognitiveEvent
 
 SCHEMA = {"type": "object", "additionalProperties": False, "properties": {
     "observation": {"type": "string", "maxLength": 500}, "focus": {"type": "string", "maxLength": 200},
+    "candidate_key": {"type":"string","maxLength":40},
     "action": {"type": "string", "enum": ["wait", "forward", "turn_left", "turn_right", "eat"]},
     "expected_outcome": {"type": "string", "maxLength": 200}, "speech": {"type": "string", "maxLength": 180},
     "memory": {"type": "string", "maxLength": 200}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}},
@@ -31,6 +32,7 @@ You see filtered block/entity descriptions, body state, and approximate sounds; 
 Visible blocks do not establish the block under your feet. Do not invent terrain beneath the reported position.
 When movement_enabled is false, actions are hypothetical proposals only. Never say you are moving or have moved.
 Specialist experiment modules independently inspect inventory, equip items and interact with reachable containers. The action_learning digest records their measured outcomes. Do not claim an action succeeded without that evidence.
+When candidates are supplied, choose candidate_key from that list (or empty string). This is a proposed experiment, not a command or proof of success. The action field is a legacy summary; candidate_key identifies the actual proposal.
 Choose ONE short action toward the persistent goal. Movement is a single 350ms pulse; turns are 90 degrees.
 Avoid forward movement when obstructed, unsupported, hazardous, or airborne. Eat only available food when hungry.
 Use wait when talking, uncertain, or no useful action is possible. Alternate looking and movement when exploring.
@@ -49,7 +51,7 @@ class CognitiveCriticAgent:
     async def review(self, backend, context, decision):
         backend.schema = REVIEW_SCHEMA
         try:
-            raw = await backend.generate(system=REVIEW_SYSTEM, input_text=json.dumps({"scene": context["scene"], "body": context["body"], "movement_enabled": context.get("movement_enabled", False), "human_message": context["human_message"], "proposal": decision}), max_tokens=192)
+            raw = await backend.generate(system=REVIEW_SYSTEM, input_text=json.dumps({"scene": context["scene"], "body": context["body"], "movement_enabled": context.get("movement_enabled", False), "human_message": context["human_message"], "proposal": decision, "candidates":context.get("candidates",[])}), max_tokens=192)
         finally:
             backend.schema = SCHEMA
         value = json.loads(raw)
@@ -139,6 +141,19 @@ class MinecraftBrain:
             if isinstance(value, list):
                 return [rounded(item) for item in value]
             return value
+        if state.get("embodied.enabled"):
+            from .embodied import action_key
+            obs=state.get("embodied.observation",{})
+            candidates=state.get("embodied.candidates",[])
+            # Diverse operations fit in working memory; never expose body wiring or admin tools.
+            diverse=[];counts={}
+            for candidate in candidates:
+                family=candidate['family']
+                if counts.get(family,0)>=2:continue
+                counts[family]=counts.get(family,0)+1
+                diverse.append({'key':action_key(candidate,obs),'action':family,'parameters':candidate['parameters']})
+            context['candidates']=diverse[:10]
+            context['background']=state.get('embodied.workspace',{})
         return rounded(context)
 
     async def tick(self):
@@ -172,7 +187,7 @@ class MinecraftBrain:
                     "human_message": str(context["human_message"])[:1000], "goal": str(context["goal"])[:300],
                     "scene": {"summary": context["scene"].get("summary", "")},
                     "body": {k: context["body"].get(k) for k in ("health", "hunger", "onGround", "proximity", "position", "heldItem", "selectedSlot", "crosshair", "inventory")}}
-                for key in ("survival", "specialist_council", "action_learning", "drives", "nearest_blocks", "known_failures", "memories", "attention"):
+                for key in ("candidates", "background", "survival", "specialist_council", "action_learning", "drives", "nearest_blocks", "known_failures", "memories", "attention"):
                     trial = {**essential, key: context.get(key)}
                     if len(json.dumps(trial, ensure_ascii=False)) <= 3800:
                         essential = trial
@@ -203,6 +218,8 @@ class MinecraftBrain:
         # No engine lock or SQLite transaction during inference. Heartbeats and senses keep running.
         planner_schema = copy.deepcopy(SCHEMA)
         summary = context["scene"].get("summary")
+        if context.get("candidates"):
+            planner_schema["properties"]["candidate_key"]["enum"] = [""]+[c["key"] for c in context["candidates"]]
         if summary:
             planner_schema["properties"]["observation"]["const"] = summary
         if not context["movement_enabled"]:
@@ -212,6 +229,8 @@ class MinecraftBrain:
         pair_started = time.monotonic()
         raw = await self.backend.generate(system=SYSTEM, input_text=prompt, max_tokens=self.config["max_output_tokens"])
         decision = self.validate(raw)
+        if decision.get('candidate_key') and decision['candidate_key'] not in {c['key'] for c in context.get('candidates',[])}:
+            raise ValueError('Planner nominated an unavailable experiment')
         if summary and decision["observation"] != summary:
             raise ValueError("Planner changed the perception agent's factual observation")
         if not context["movement_enabled"] and decision["action"] != "wait":
@@ -236,7 +255,7 @@ class MinecraftBrain:
             state.set("brain.last_review", review)
             reviewed = CognitiveEvent("cognitive_critic", "brain.review", {**review, "metrics": getattr(self.backend, "metrics", {})}, (review_call.id,))
             self.engine.bus.publish(reviewed)
-            result = CognitiveEvent("deliberation_planner", "brain.decision", {**decision, "approved": review["approved"]}, (reviewed.id,))
+            result = CognitiveEvent("deliberation_planner", "brain.decision", {**decision, "approved": review["approved"], "control_epoch":epoch}, (reviewed.id,))
             self.engine.bus.publish(result)
             stale = not review["approved"] or epoch != state.get("brain.control_epoch", 0) or not state.get("minecraft.connection", {}).get("connected")
             if not stale and decision["speech"]:
@@ -257,7 +276,7 @@ class MinecraftBrain:
     @staticmethod
     def validate(raw):
         value = json.loads(raw)
-        if not isinstance(value, dict) or set(value) != set(SCHEMA["required"]):
+        if not isinstance(value, dict) or not set(SCHEMA["required"]) <= set(value) or not set(value) <= set(SCHEMA["properties"]):
             raise ValueError("Model returned an invalid decision object")
         if value["action"] not in SCHEMA["properties"]["action"]["enum"]:
             raise ValueError("Model returned an unsupported action")
@@ -266,6 +285,8 @@ class MinecraftBrain:
                 raise ValueError("Model decision text exceeded bounds")
         if type(value["confidence"]) not in (int, float) or not math.isfinite(value["confidence"]) or not 0 <= value["confidence"] <= 1:
             raise ValueError("Invalid confidence")
+        if "candidate_key" in value and (not isinstance(value["candidate_key"],str) or len(value["candidate_key"])>40):
+            raise ValueError("Invalid candidate key")
         return value
 
     @staticmethod
