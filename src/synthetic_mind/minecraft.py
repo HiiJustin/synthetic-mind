@@ -25,6 +25,7 @@ from .tempo import profile
 
 
 HELP = """Minecraft controls (operator console):
+  /server COMMAND     owned server console (operator only; e.g. /server time set day)
   /status             connection, body, drives, motor outcomes
   /sense              last filtered sensory observation
   /move forward|back|left|right|jump  one short movement pulse
@@ -89,7 +90,7 @@ class MinecraftEngine(Engine):
         self.state.set("brain.busy", False)
         self.state.set("brain.queued", False)
         self.state.set("brain.control_epoch", self.state.get("brain.control_epoch", 0) + 1)
-        self.state.set("council.enabled", self.brain_config.get("architecture") == "council")
+        self.state.set("council.enabled", self.brain_config.get("architecture") in {"council", "embodied"})
         self.state.set("learning.pending", {})
         self.state.set("muscles.pending", {})
         self.state.set("council.program", None)
@@ -131,6 +132,21 @@ class MinecraftEngine(Engine):
                 self.registry.register(AdaptiveFeedbackAgent(self.state))
                 for agent in survival_agents(self.state):
                     self.registry.register(agent)
+        if self.brain_config.get("architecture") == "embodied":
+            # Keep measured muscle learning and memory; replace fixed bids and motor policies.
+            keep = {"spatial_memory", "semantic_memory", "muscle_learning", "sensorimotor_reflection"}
+            for agent in council_agents(self.state, self.self_model):
+                if agent.name not in keep: self.registry.modules.pop(agent.name, None)
+            for agent in survival_agents(self.state): self.registry.modules.pop(agent.name, None)
+            self.registry.modules.pop("adaptive_feedback", None)
+            from .embodied import modules
+            from .minecraft_embodiment import MinecraftEmbodiment
+            for agent in [MinecraftEmbodiment(self.state), *modules(self.state)]: self.registry.register(agent)
+            self.state.set("embodied.eligibility", [])
+            self.state.set("embodied.candidates", [])
+            self.state.set("embodied.vitals", None)
+            self.state.set("embodied.next_action", 0)
+            self.state.set("embodied.enabled", True)
         memory = self.registry.modules.get("memory")
         if memory:
             memory.subscriptions = memory.subscriptions | {"minecraft.senses", "minecraft.sound", "minecraft.action_result", "minecraft.chat", "memory.consolidated", "learning.outcome", "muscle.learned", "survival.lesson", "minecraft.damage", "minecraft.death", "minecraft.respawned"}
@@ -144,12 +160,12 @@ class MinecraftEngine(Engine):
     async def start(self) -> None:
         async with self.lock:
             self.bus.publish(CognitiveEvent("runtime", "runtime.boot", {"identity_id": self.self_model.load().identity_id,
-                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.15.0", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
+                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.16.0", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
             await self.bus.drain()
 
     def status(self) -> dict:
         status = super().status()
-        status.update({"version": "0.15.0-minecraft", "environment": "minecraft", "tempo": self.tempo, "connection": self.state.get("minecraft.connection", {}),
+        status.update({"version": "0.16.0-minecraft", "environment": "minecraft", "tempo": self.tempo, "connection": self.state.get("minecraft.connection", {}),
                        "council": {"winner": self.state.get("council.winner"), "alternatives": self.state.get("council.disagreements", []),
                            "skills": self.state.get("council.skills", {}), "reflection": self.state.get("council.reflection"),
                            "blocked_reason": self.state.get("council.blocked_reason"), "spatial_sectors": len(self.state.get("council.spatial", {}).get("visits", {}))},
@@ -359,6 +375,13 @@ async def minecraft_console(session: MinecraftSession) -> None:
                 break
             if verb == "/help":
                 print(HELP)
+            elif verb == "/server":
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("server_control", engine.directory / "tools" / "server_control.py")
+                control = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(control)
+                control.enqueue(argument)
+                print("[server] Queued; server output is in minecraft/server/launcher-server.log")
             elif verb == "/status":
                 print(json.dumps(engine.status(), indent=2))
             elif verb == "/sense":

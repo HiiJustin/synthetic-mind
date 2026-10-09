@@ -1,19 +1,18 @@
 'use strict'
 
 const { distance, lineVisible } = require('./senses')
-const ACTIONS = ['inventory', 'equip', 'dig', 'place', 'inspect_container', 'take']
+const ACTIONS = ['inventory', 'equip', 'dig', 'place', 'inspect_container', 'take', 'use_block', 'use_item']
 const MATERIALS = /^(dirt|cobblestone|oak_planks|oak_log|birch_log|spruce_log)$/
 const items = bot => bot.inventory.items().map(item => ({ name: item.name, count: item.count }))
 const snapshot = bot => ({ inventory: items(bot), held: bot.heldItem ? bot.heldItem.name : null, food: bot.food })
 
 function validateHands (command) {
   if (['equip', 'place', 'take'].includes(command.action) && (typeof command.item !== 'string' || !/^[a-z0-9_]{1,64}$/.test(command.item))) throw new Error('Specify an item name')
-  if (['dig', 'place', 'inspect_container', 'take'].includes(command.action)) {
+  if (['dig', 'place', 'inspect_container', 'take', 'use_block'].includes(command.action)) {
     if (!command.target || !['x', 'y', 'z'].every(k => Number.isInteger(command.target[k]) && Math.abs(command.target[k]) <= 30000000)) throw new Error('Specify integer block coordinates')
     if (typeof command.block !== 'string' || !/^[a-z0-9_]{1,64}$/.test(command.block)) throw new Error('Specify the expected block name')
   }
   if (command.action === 'take' && (!Number.isInteger(command.count) || command.count < 1 || command.count > 8)) throw new Error('Take between 1 and 8 items')
-  if (command.action === 'place' && !MATERIALS.test(command.item)) throw new Error('Placement limited to simple building materials')
   return command
 }
 
@@ -32,6 +31,7 @@ async function executeHands (bot, command, check = () => {}) {
   check()
   const before = snapshot(bot)
   let evidence = {}
+  if (command.action === 'use_item') { await executeUse(bot, 2000, check); return { before, after: snapshot(bot), verified: true } }
   if (command.action === 'inventory') return { before, after: snapshot(bot), verified: true }
   if (command.action === 'equip') {
     const item = bot.inventory.items().find(i => i.name === command.item)
@@ -41,9 +41,13 @@ async function executeHands (bot, command, check = () => {}) {
     evidence = { verified: bot.heldItem?.name === command.item }
   } else {
     const block = targetBlock(bot, command)
-    if (command.action === 'dig') {
+    if (command.action === 'use_block') {
+      await bot.activateBlock(block); check()
+      if (bot.currentWindow) { evidence.contents=bot.currentWindow.slots.filter(Boolean).map(i=>({name:i.name,count:i.count,slot:i.slot})); bot.closeWindow(bot.currentWindow) }
+      evidence.verified=true
+    } else if (command.action === 'dig') {
       // No underfoot excavation, falling blocks, fluids, containers or unbounded mining.
-      if (!MATERIALS.test(block.name) || block.position.y < Math.floor(bot.entity.position.y) || bot.digTime(block) > 5000) throw new Error('Target is outside bounded digging capabilities')
+      if (block.diggable === false) throw new Error('The game marks this block unbreakable')
       await bot.dig(block)
       check()
       const after = bot.blockAt(block.position)
@@ -87,4 +91,23 @@ async function executeHands (bot, command, check = () => {}) {
   return { before, after, ...evidence }
 }
 
-module.exports = { ACTIONS, validateHands, executeHands, snapshot }
+async function executeUse(bot, duration, check) {
+  const block = require('./senses').cursorBlock(bot)
+  const held = bot.heldItem
+  if (block && held && bot.registry.blocksByName[held.name]) {
+    const hit = block.face
+    const faces = [[0,-1,0],[0,1,0],[0,0,-1],[0,0,1],[-1,0,0],[1,0,0]]
+    const f = faces[hit] || [0,1,0]
+    await bot.placeBlock(block, block.position.offset(-block.position.x+f[0],-block.position.y+f[1],-block.position.z+f[2]))
+  } else if (held && bot.registry.foodsByName?.[held.name]) {
+    bot.activateItem()
+    try { const until=Date.now()+duration; while(Date.now()<until){check();await new Promise(r=>setTimeout(r,25))} }
+    finally { bot.deactivateItem() }
+  } else if (block) { await bot.activateBlock(block); if(bot.currentWindow)bot.closeWindow(bot.currentWindow) }
+  else {
+    bot.activateItem()
+    try { await new Promise(r=>setTimeout(r,Math.min(duration,350)));check() } finally { bot.deactivateItem() }
+  }
+  check()
+}
+module.exports = { ACTIONS, validateHands, executeHands, snapshot, executeUse }

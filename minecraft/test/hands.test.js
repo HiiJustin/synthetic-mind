@@ -6,7 +6,7 @@ const { validateHands, executeHands } = require('../hands')
 test('hands reject malformed targets and excessive transfers', () => {
   assert.throws(() => validateHands({ action: 'dig', target: { x: NaN, y: 1, z: 2 }, block: 'dirt' }))
   assert.throws(() => validateHands({ action: 'take', item: 'bread', count: 64, target: { x: 0, y: 1, z: 2 }, block: 'chest' }))
-  assert.throws(() => validateHands({ action: 'place', item: 'tnt', target: { x: 0, y: 1, z: 2 }, block: 'stone' }))
+  assert.doesNotThrow(() => validateHands({ action: 'place', item: 'tnt', target: { x: 0, y: 1, z: 2 }, block: 'stone' }))
 })
 
 test('equipment learns an observed held-item change, not just a resolved promise', async () => {

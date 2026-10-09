@@ -18,7 +18,7 @@ class CouncilTests(unittest.IsolatedAsyncioTestCase):
         self.temp = tempfile.TemporaryDirectory(dir=PROJECT / 'work')
         root = Path(self.temp.name)
         (root / 'config').mkdir()
-        (root / 'config/brain.json').write_text((PROJECT / 'config/brain.json').read_text())
+        (root / 'config/brain.json').write_text(json.dumps({**json.loads((PROJECT / 'config/brain.json').read_text()), "architecture":"council"}))
         self.engine = MinecraftEngine(root, Config())
         self.engine.state.set("learning.enabled", False)
         self.engine.state.set("sensorimotor.developmental", False)

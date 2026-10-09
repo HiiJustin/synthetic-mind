@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "architecture": "council",
+  "architecture": "embodied",
   "model": "qwen3-vl:8b-instruct-q4_K_M",
   "interval_seconds": 30,
   "calls_per_minute": 4,

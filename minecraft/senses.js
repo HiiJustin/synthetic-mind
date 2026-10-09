@@ -86,7 +86,7 @@ function observe (bot, config, sequence) {
   const visibleBlocks = []
   for (const candidate of candidates) {
     if (visibleBlocks.length >= config.maxVisibleBlocks) break
-    if (lineVisible(bot, eye, candidate.center, true)) visibleBlocks.push({ name: candidate.block.name, position: xyz(candidate.block.position), distance: Number(candidate.range.toFixed(2)) })
+    if (lineVisible(bot, eye, candidate.center, true)) visibleBlocks.push({ name: candidate.block.name, position: xyz(candidate.block.position), distance: Number(candidate.range.toFixed(2)), knownDrops: (bot.registry?.blocksByName?.[candidate.block.name]?.drops || []).map(id=>bot.registry.items[id]?.name).filter(Boolean), knowledgeOrigin: 'supplied game material knowledge' })
   }
   const visibleEntities = []
   for (const entity of Object.values(bot.entities || {})) {
@@ -110,6 +110,8 @@ function observe (bot, config, sequence) {
     proximity: motorProximity(bot),
     inventory: bot.inventory.items().map(item => ({ name: item.name, count: item.count })).slice(0, 36),
     heldItem: bot.heldItem ? bot.heldItem.name : null,
+    heldNutrition: bot.registry?.foodsByName?.[bot.heldItem?.name]?.foodPoints || 0,
+    recipes: require('./recipe-senses').recipeKnowledge(bot, visibleBlocks),
     selectedSlot: bot.quickBarSlot,
     crosshair: (() => { const b = cursorBlock(bot); return b ? { name: b.name, position: xyz(b.position) } : null })(),
     worldTickRate: bot.worldTickRate || 20,
@@ -133,7 +135,7 @@ function heardSound (bot, config, packet) {
 
 function validateCommand (command) {
   if (!command || typeof command !== 'object' || typeof command.id !== 'string' || command.id.length > 100) throw new Error('Invalid command envelope')
-  if (!['move', 'look', 'stop', 'say', 'eat', 'muscle', 'inventory', 'equip', 'dig', 'place', 'inspect_container', 'take', 'heartbeat', 'disconnect', 'navigate', 'harvest', 'craft', 'place_at', 'sleep', 'strike'].includes(command.action)) throw new Error('Unsupported action')
+  if (!['move', 'look', 'stop', 'say', 'eat', 'muscle', 'inventory', 'equip', 'dig', 'place', 'inspect_container', 'take', 'use_item', 'use_block', 'heartbeat', 'disconnect', 'navigate', 'harvest', 'craft', 'place_at', 'sleep', 'strike'].includes(command.action)) throw new Error('Unsupported action')
   if (command.action === 'move' && !['forward', 'back', 'left', 'right', 'jump'].includes(command.control)) throw new Error('Unsupported movement')
   if ('jump' in command && typeof command.jump !== 'boolean') throw new Error('Invalid jump modifier')
   if (command.action === 'look' && (!finite(command.yaw) || !finite(command.pitch) || Math.abs(command.pitch) > Math.PI / 2)) throw new Error('Invalid look angle')

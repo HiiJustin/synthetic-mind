@@ -77,6 +77,11 @@ class Drives:
 
 @dataclass
 class ModuleHealth:
+    outputs: int = 0
+    changes: int = 0
+    last_productive: str | None = None
+    last_kind: str | None = None
+    latency_ms: float = 0
     processed: int = 0
     failures: int = 0
     last_event: str | None = None

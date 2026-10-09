@@ -11,7 +11,7 @@ import time
 
 from .schemas import CognitiveEvent
 
-HANDS = {"inventory", "equip", "dig", "place", "inspect_container", "take"}
+HANDS = {"inventory", "equip", "dig", "place", "inspect_container", "take", "use_block", "use_item"}
 NAME = re.compile(r"[a-z0-9_]{1,64}\Z")
 MATERIALS = {"dirt", "cobblestone", "oak_planks", "oak_log", "birch_log", "spruce_log"}
 
@@ -25,11 +25,9 @@ def valid_hand_action(content, sensed):
         return False
     if action in {"equip", "place"} and not any(i["name"] == item and i["count"] > 0 for i in sensed.get("inventory", [])):
         return False
-    if action == "place" and item not in MATERIALS:
-        return False
     if action == "take" and (type(content.get("count")) is not int or not 1 <= content["count"] <= 8):
         return False
-    if action in {"dig", "place", "inspect_container", "take"}:
+    if action in {"dig", "place", "inspect_container", "take", "use_block"}:
         target = content.get("target")
         if not isinstance(target, dict) or not all(type(target.get(k)) is int for k in ("x", "y", "z")):
             return False
@@ -37,8 +35,6 @@ def valid_hand_action(content, sensed):
         if not match:
             return False
         if action in {"inspect_container", "take"} and match["name"] not in {"chest", "barrel"}:
-            return False
-        if action == "dig" and (match["name"] not in MATERIALS or target["y"] < math.floor(sensed["position"]["y"])):
             return False
     return True
 

@@ -1,5 +1,6 @@
 """Independent survival needs, supplied routines, and evidence-based outcome memory."""
 from __future__ import annotations
+import re
 import math
 import time
 from .schemas import CognitiveEvent
@@ -16,15 +17,15 @@ def command_key(c):
 def valid_routine(c, sensed, state):
     if not state.get('survival.enabled') or c.get('action') not in ROUTINES: return False
     action = c['action']
-    if action == 'craft': return c.get('item') in {'oak_planks','birch_planks','spruce_planks','crafting_table','stick','wooden_sword','bread'} and type(c.get('count')) is int and 1 <= c['count'] <= 8
+    if action == 'craft': return isinstance(c.get('item'),str) and bool(re.fullmatch(r'[a-z0-9_]{1,64}',c['item'])) and type(c.get('count')) is int and 1 <= c['count'] <= 8
     if action == 'strike':
-        return any(e.get('id') == c.get('entity_id') and e.get('type') in HOSTILE and e.get('distance',999)<3.3 for e in sensed.get('visibleEntities',[]))
+        return any(e.get('id') == c.get('entity_id') and e.get('distance',999)<3.3 for e in sensed.get('visibleEntities',[]))
     target=c.get('target')
     if not isinstance(target,dict) or not all(type(target.get(k)) in (int,float) and math.isfinite(target[k]) for k in ('x','y','z')): return False
     if math.dist([target[k] for k in ('x','y','z')],[sensed.get('position',{}).get(k,1e9) for k in ('x','y','z')])>40: return False
     if action=='navigate': return True  # Destination chosen from remembered observations; body checks every path step.
     if not all(type(target[k]) is int for k in ('x','y','z')): return False
-    if action=='place_at': return c.get('item') in {'dirt','cobblestone','oak_planks','birch_planks','spruce_planks','crafting_table'}
+    if action=='place_at': return isinstance(c.get('item'),str) and bool(re.fullmatch(r'[a-z0-9_]{1,64}',c['item']))
     return any(b['position']==target and (b['name'].endswith('_bed') if action=='sleep' else b['name']==c.get('block')) for b in sensed.get('visibleBlocks',[]))
 
 

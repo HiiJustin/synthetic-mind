@@ -9,12 +9,13 @@ function clearRay(bot, a, b) {
   for (let i=1;i<=n;i++) if (!clearPoint(bot, a.plus(b.minus(a).scaled(i/n)))) return false
   return true
 }
-function chooseView(bot, distance=8, previous=null) {
+function chooseView(bot, distance=8, previous=null, mode='follow') {
   const p=bot.entity.position, eye=p.offset(0,1.5,0), yaw=previous?Math.atan2(previous.x-p.x,previous.z-p.z):bot.entity.yaw
   const options=[]
   for (const radius of [distance, Math.min(distance,6), Math.min(distance,4),2]) {
     for (const height of [3,5,1]) for (const angle of [0,.65,-.65,1.3,-1.3,Math.PI]) {
-      const a=yaw+angle, foot=p.offset(Math.sin(a)*radius,height,Math.cos(a)*radius)
+      const basis=mode==='follow'?yaw:bot.entity.yaw+(mode==='side'?Math.PI/2:mode==='front'?Math.PI:0)
+      const a=basis+angle, foot=p.offset(Math.sin(a)*radius,mode==='overhead'?height+distance:height,Math.cos(a)*radius)
       const view=foot.offset(0,1.62,0)
       const continuity=previous?Math.min(8,foot.distanceTo(new p.constructor(previous.x,previous.y,previous.z)))*.18:0
       options.push({position:foot,score:Math.abs(angle)*.7+Math.abs(distance-radius)*.4+Math.abs(height-3)*.2+continuity})

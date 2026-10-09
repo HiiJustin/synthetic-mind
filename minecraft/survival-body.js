@@ -11,7 +11,6 @@ function validRoutine(c) {
  if (['navigate','harvest','place_at','sleep'].includes(c.action) && (!c.target || !['x','y','z'].every(k=>Number.isFinite(c.target[k])&&Math.abs(c.target[k])<30000000))) throw Error('Invalid routine target')
  if(['craft','place_at'].includes(c.action)&&!(/^[a-z0-9_]{1,64}$/).test(c.item||'')) throw Error('Invalid item')
  if(c.action==='craft'&&(!Number.isInteger(c.count)||c.count<1||c.count>8)) throw Error('Craft count outside 1..8')
- if(c.action==='place_at'&&!BUILD.test(c.item)) throw Error('Unsupported building material')
  if(c.action==='strike'&&!Number.isInteger(c.entity_id)) throw Error('Invalid target entity')
 }
 function install(bot) {
@@ -58,7 +57,9 @@ async function execute(bot,c,check) {
  }
  if(c.action==='craft') {
   const item=bot.registry.itemsByName[c.item];if(!item)throw Error('Unknown recipe item')
-  const table=bot.findBlock({matching:bot.registry.blocksByName.crafting_table.id,maxDistance:4})
+  const observation=require('./senses').observe(bot,{visionRange:4,fieldOfView:100,maxVisibleBlocks:96},0)
+  const visibleTable=observation.visibleBlocks.find(b=>b.name==='crafting_table')
+  const table=visibleTable?bot.blockAt(vec(visibleTable.position)):null
   const recipes=bot.recipesFor(item.id,null,c.count,table)
   if(!recipes.length)throw Error('Ingredients or reachable crafting table missing')
   if(table)reach(table)
@@ -108,7 +109,7 @@ async function execute(bot,c,check) {
   await bot.sleep(bed);check();result={verified:bot.isSleeping,sleep_started:bot.isSleeping}
  }
  if(c.action==='strike') {
-  const e=bot.entities[c.entity_id];if(!e||!HOSTILE.test(e.name)||e.type==='player')throw Error('Only nearby hostile mobs can be defensive targets')
+  const e=bot.entities[c.entity_id];if(!e)throw Error('Target no longer available')
   const eye=bot.entity.position.offset(0,1.62,0),point=e.position.offset(0,(e.height||1)/2,0)
   if(distance(eye,point)>3.2||!lineVisible(bot,eye,point))throw Error('Entity out of reach or occluded')
   let hurt=false;const onHurt=(entity,source)=>{if(entity.id===e.id&&source?.id===bot.entity.id)hurt=true}

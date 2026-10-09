@@ -25,15 +25,20 @@ let lastSense = ''
 const { chooseView } = require('./observer-view')
 const cameraFile = path.join(__dirname, '../work/camera-view.json')
 const cameraSettings = path.join(__dirname, '../work/camera-settings.json')
-let previousCamera = null
+let previousCamera = {}
 const cameraTimer = setInterval(() => {
   if (!ready || !bot.entity) return
   try {
     const settings = JSON.parse(fs.readFileSync(cameraSettings,'utf8'))
     if (!settings.enabled) return
-    const view = chooseView(bot, Math.max(4,Math.min(20,Number(settings.distance)||8)), previousCamera)
-    if (view.clear) previousCamera=view.position
-    fs.writeFileSync(cameraFile+'.tmp',JSON.stringify(view))
+    const views = {}
+    for (const [player, options] of Object.entries(settings.players || {})) {
+      if (options.mode === 'first') continue
+      const view = chooseView(bot, Math.max(4,Math.min(20,Number(options.distance)||8)), previousCamera[player], options.mode)
+      if (view.clear) previousCamera[player]=view.position
+      views[player]=view
+    }
+    fs.writeFileSync(cameraFile+'.tmp',JSON.stringify({players:views}))
     fs.renameSync(cameraFile+'.tmp',cameraFile)
   } catch (_) {} // Operator telemetry must never stop cognition.
 },50)
@@ -96,7 +101,7 @@ bot.on('physicsTick', () => {
   }
 })
 bot.on('chat', (username, text) => {
-  if (username === bot.username) return
+  if (username === bot.username || /^!camera(?: |$)/i.test(text)) return
   if (username.toLowerCase() === 'firmlygrasp1t' && /^!(start|stop|shutdown|camera)(?: |$)/i.test(text)) {
     send('minecraft.chat', { username, text: text.slice(0, 1000), sensoryModel: 'operator-control' })
     return

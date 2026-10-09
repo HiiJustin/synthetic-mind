@@ -41,9 +41,9 @@ class SurvivalTests(unittest.IsolatedAsyncioTestCase):
   await OutcomeMemoryAgent(self.state).on_event(CognitiveEvent('body','minecraft.damage',{'attribution':'server','source_type':'zombie'}))
   second=await agent.on_event(self.event);self.assertEqual(second[0].content['experiment']['action'],'navigate')
   self.assertIn('Prior damage',second[0].content['reason'])
- def test_combat_excludes_players_and_far_targets(self):
+ def test_combat_allows_visible_players_but_rejects_far_targets(self):
   obs=self.state['minecraft.sensed'];obs['visibleEntities']=[{'id':1,'type':'player','distance':2},{'id':2,'type':'zombie','distance':8}]
-  self.assertFalse(valid_routine({'action':'strike','entity_id':1},obs,self.state));self.assertFalse(valid_routine({'action':'strike','entity_id':2},obs,self.state))
+  self.assertTrue(valid_routine({'action':'strike','entity_id':1},obs,self.state));self.assertFalse(valid_routine({'action':'strike','entity_id':2},obs,self.state))
  def test_blueprint_has_doorway_and_roof(self):
   blocks=blueprint({'x':0,'y':70,'z':0})
   self.assertNotIn({'x':0,'y':70,'z':-2},blocks)

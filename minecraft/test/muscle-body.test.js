@@ -46,11 +46,14 @@ test('cancellation releases controls and physics listeners', async () => {
   assert.equal(bot.listenerCount('physicsTick'), 0)
 })
 
-test('unsafe ground inhibits before control is pressed', async () => {
+test('ground hazard does not veto a voluntary button press', async () => {
   const bot = fixture()
   bot.blockAt = p => ({ name: 'air', position: p, boundingBox: 'empty' })
-  await assert.rejects(activateMuscle(bot, { channel: 'm2' }, guard), /inhibited/)
-  assert.equal(bot.control, undefined)
+  let pressed=false
+  bot.setControlState=()=>{pressed=true}
+  await activateMuscle(bot, {channel:'m2'}, guard)
+  assert.equal(pressed,true)
+  assert.equal(bot.control,null)
 })
 
 test('looking is measured rather than described by a key label', async () => {

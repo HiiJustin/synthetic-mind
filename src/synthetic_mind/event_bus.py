@@ -85,6 +85,12 @@ class EventBus:
                     child_id = self.publish(replace(child, parents=child.parents or (event.id,)))
                     if child_id:
                         trace["output_event_ids"].append(child_id)
+                health.outputs += len(trace["output_event_ids"])
+                changed = sum(not item.get("unchanged", False) for item in trace["state_writes"])
+                health.changes += changed
+                health.last_kind = event.kind
+                health.latency_ms = round((time.perf_counter()-started)*1000, 3)
+                if changed or trace["output_event_ids"]: health.last_productive = event.id
                 health.processed += 1
                 health.last_event = event.id
                 self.state.set("health." + name, asdict(health))

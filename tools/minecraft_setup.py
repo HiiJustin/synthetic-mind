@@ -151,6 +151,7 @@ def launch(tempo="normal") -> int:
     process = None
     log = None
     camera = None
+    control = None
     try:
         if listening():
             if tempo != "normal":
@@ -181,13 +182,21 @@ def launch(tempo="normal") -> int:
         print("\nOpen Minecraft Java 1.21.4 and join 127.0.0.1:25565.\nThe bot will join as SyntheticMind. Console sessions start stopped; STREAM_START enables autonomous learning.\n", flush=True)
         if process:
             from observer_camera import ObserverCamera
-            camera = ObserverCamera(process, SERVER / "launcher-server.log")
+            import threading
+            from server_control import ServerControl
+            server_lock = threading.Lock()
+            control = ServerControl(process, ROOT / "work" / "server-controls", server_lock)
+            control.start()
+            camera = ObserverCamera(process, SERVER / "launcher-server.log", server_lock)
             camera.start()
         env = {**os.environ, "SYNTHETIC_MIND_TEMPO": tempo, "PYTHONPATH": str(ROOT / "src") + os.pathsep + os.environ.get("PYTHONPATH", "")}
+        if control: env.update(control.env)
         return subprocess.call([sys.executable, "-B", "-m", "synthetic_mind", "minecraft"], cwd=ROOT, env=env)
     finally:
         if camera:
             camera.close()
+        if control:
+            control.close()
         if process and process.poll() is None:
             try:
                 assert process.stdin

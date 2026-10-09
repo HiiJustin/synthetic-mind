@@ -37,22 +37,9 @@ async function activateMuscle (bot, command, guard, wiring = DEFAULT_WIRING) {
   }
   check()
   if (['forward', 'back', 'left', 'right', 'jump'].includes(control)) {
-    const offset = { forward: 0, back: Math.PI, left: Math.PI / 2, right: -Math.PI / 2, jump: 0 }[control]
-    if (!bot.entity.onGround) throw new Error('Body reflex: wait until grounded')
-    const probe = () => motorProximity({ ...bot, entity: { ...bot.entity, yaw: bot.entity.yaw + offset } }, 0.85)
-    const unsafe = () => { const p = probe(); return p.hazardAhead || !p.supportedAhead || p.obstructedAhead }
-    if (unsafe()) throw new Error('Body reflex inhibited activation')
-    const reflex = () => {
-      peakHeight = Math.max(peakHeight, bot.entity.position.y)
-      if (control !== 'jump' && bot.entity.onGround && unsafe()) {
-        intervention = 'proximity'; bot.clearControlStates()
-      }
-    }
-    bot.on('physicsTick', reflex)
-    try {
-      bot.setControlState(control, true)
-      await wait(Math.min(requested, 350))
-    } finally { bot.clearControlStates(); bot.removeListener('physicsTick', reflex) }
+    // Body physics determines collisions, falls and hazards. No hand-authored survival veto.
+    try { bot.setControlState(control, true); await wait(requested) }
+    finally { bot.clearControlStates() }
   } else if (control.startsWith('slot_')) {
     bot.setQuickBarSlot((bot.quickBarSlot + (control === 'slot_next' ? 1 : 8)) % 9)
     await wait(100)
@@ -62,14 +49,10 @@ async function activateMuscle (bot, command, guard, wiring = DEFAULT_WIRING) {
     await bot.look(yaw, pitch, true)
     await wait(100)
   } else if (control === 'use') {
-    // Early body supports using held food; it never chooses/equips a food item here.
-    if (bot.heldItem && bot.registry.foodsByName?.[bot.heldItem.name] && bot.food < 20) {
-      bot.activateItem()
-      try { await wait(Math.min(requested, 2500)) } finally { bot.deactivateItem() }
-      await wait(150)
-    } else await wait(100)
+    const { executeUse } = require('./hands')
+    await executeUse(bot, requested, check)
   } else if (control === 'attack') {
-    if (target && /^(dirt|oak_log|birch_log|spruce_log)$/.test(target.name) && target.position.y >= Math.floor(bot.entity.position.y)) {
+    if (target && target.diggable !== false) {
       // A held pulse can be too short to break a block: that is an observable non-effect.
       let settled = false
       let failure
@@ -78,7 +61,12 @@ async function activateMuscle (bot, command, guard, wiring = DEFAULT_WIRING) {
       check()
       if (failure && !/abort/i.test(failure.message)) throw failure
       await wait(150)
-    } else await wait(100)
+    } else {
+      const entity = bot.entityAtCursor?.(3)
+      if (entity) bot.attack(entity)
+      else bot.swingArm()
+      await wait(100)
+    }
   } else throw new Error('Invalid body wiring')
   check()
   const after = proprioception(bot, target?.position)
