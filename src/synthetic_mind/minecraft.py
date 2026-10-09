@@ -93,6 +93,8 @@ class MinecraftEngine(Engine):
         self.state.set("learning.pending", {})
         self.state.set("muscles.pending", {})
         self.state.set("council.program", None)
+        self.state.set("adaptation.window", [])
+        self.state.set("adaptation.pending", {})
         self.state.set("council.last_motor", None)
         self.state.set("council.pending_motor", None)
         self.state.set("council.guidance", {})
@@ -103,7 +105,7 @@ class MinecraftEngine(Engine):
         world = json.loads(world_path.read_text()) if world_path.exists() else {"id": "legacy-flat"}
         if self.state.get("minecraft.world_id", "legacy-flat") != world["id"]:
             for key, value in {"learning.containers": {}, "minecraft.map": {}, "minecraft.workspace": {"candidates": {}, "active": [], "revision": 0},
-                "council.spatial": {"visits": {}, "landmarks": {}, "sector": None}, "cognition.scene": {}, "cognition.recalled": [], "minecraft.sensed": {}, "survival.build":{}, "survival.destinations":{}, "survival.routines":{}}.items():
+                "council.spatial": {"visits": {}, "landmarks": {}, "sector": None}, "cognition.scene": {}, "cognition.recalled": [], "minecraft.sensed": {}, "survival.build":{}, "survival.destinations":{}, "survival.routines":{}, "adaptation.visits":{}, "adaptation.rewarded_cells":[], "adaptation.window":[]}.items():
                 self.state.set(key, value)
         self.state.set("minecraft.world_id", world["id"])
         # The tiny world stays as a regression fixture. These modules and namespaces
@@ -125,6 +127,8 @@ class MinecraftEngine(Engine):
             if self.state.get("council.enabled"):
                 for agent in council_agents(self.state, self.self_model):
                     self.registry.register(agent)
+                from .adaptation import AdaptiveFeedbackAgent
+                self.registry.register(AdaptiveFeedbackAgent(self.state))
                 for agent in survival_agents(self.state):
                     self.registry.register(agent)
         memory = self.registry.modules.get("memory")
@@ -140,12 +144,12 @@ class MinecraftEngine(Engine):
     async def start(self) -> None:
         async with self.lock:
             self.bus.publish(CognitiveEvent("runtime", "runtime.boot", {"identity_id": self.self_model.load().identity_id,
-                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.14.1", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
+                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.15.0", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
             await self.bus.drain()
 
     def status(self) -> dict:
         status = super().status()
-        status.update({"version": "0.14.1-minecraft", "environment": "minecraft", "tempo": self.tempo, "connection": self.state.get("minecraft.connection", {}),
+        status.update({"version": "0.15.0-minecraft", "environment": "minecraft", "tempo": self.tempo, "connection": self.state.get("minecraft.connection", {}),
                        "council": {"winner": self.state.get("council.winner"), "alternatives": self.state.get("council.disagreements", []),
                            "skills": self.state.get("council.skills", {}), "reflection": self.state.get("council.reflection"),
                            "blocked_reason": self.state.get("council.blocked_reason"), "spatial_sectors": len(self.state.get("council.spatial", {}).get("visits", {}))},
@@ -490,6 +494,8 @@ async def run_minecraft(root: Path, database: Path | None = None, bridge_config:
         async def motor_loop():
             while True:
                 await asyncio.sleep(engine.tempo["cycle_interval"])
+                from .operator_control import drain_controls
+                await drain_controls(session, root / "work" / "controls")
                 if engine.state.get("council.enabled"):
                     async with engine.lock:
                         engine.bus.publish(CognitiveEvent("runtime", "cognition.cycle", {}))

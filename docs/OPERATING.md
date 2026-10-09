@@ -13,6 +13,10 @@
 
 Start at normal game speed. Fast mode is not a repair for slow reasoning or navigation loops.
 
+## Clickable controls
+
+Open `http://127.0.0.1:8765/` after starting the launcher and dashboard. Start/Pause, goal editing, assisted-routine and learning toggles are available without typing console commands. Start resumes an already running bot; it does not launch a stopped server. Commands expire after 15 seconds and report when the bot applies them. The schematic flashes on real module-event changes, not inferred consciousness.
+
 ## Project console
 
 These commands belong in the project console, **not Minecraft chat**.

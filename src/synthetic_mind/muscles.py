@@ -86,6 +86,11 @@ class MotorBabblingAgent:
                 choices.append((samples, channel, 350))
                 continue
             means = record.get('mean', {})
+            # Two samples are not calibration when uncertainty still prevents reuse.
+            uncertain = any(abs(means.get(effect,0))>.1 and lower_bound(record,effect,1 if means.get(effect,0)>0 else -1)<=.1 for effect in ('forward','sideways','yaw','pitch'))
+            if 2 <= samples < 12 and uncertain:
+                choices.append((2 + samples/100,channel,350))
+                continue
             # No-effect channels get longer trials in new contexts, not invented meanings.
             contextual_effect = abs(means.get('food', 0)) > 0 or abs(means.get('block_changed', 0)) > 0
             if contextual_effect or max((abs(means.get(k, 0)) for k in EFFECTS), default=0) < 0.08:
@@ -100,7 +105,7 @@ class MotorBabblingAgent:
         _, channel, duration = min(choices)
         self.state.set('sensorimotor.discovery', f'Testing {channel} for {duration} ms in {context}')
         return [CognitiveEvent(self.name, 'motivation.proposal', {'role': 'muscle_discovery', 'skill': 'muscle_experiment',
-            'channel': channel, 'duration_ms': duration, 'score': 0.86, 'reason': 'Reduce uncertainty about a body channel through observation',
+            'channel': channel, 'duration_ms': duration, 'score': 1.0 if self.state.get('adaptation.progress',{}).get('looping') else 0.86, 'reason': 'Reduce uncertainty about a body channel through observation',
             'sensory_id': event.content['source_id'], 'target': None})]
 
 

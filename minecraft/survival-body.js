@@ -18,7 +18,7 @@ function install(bot) {
  const {pathfinder,Movements}=require('mineflayer-pathfinder')
  bot.loadPlugin(pathfinder)
  bot.on('spawn',()=>{
-  const m=new Movements(bot);m.canDig=false;m.allow1by1towers=false;m.allowParkour=false;m.allowSprinting=false;m.maxDropDown=1;m.scafoldingBlocks=[]
+  const m=new Movements(bot);m.canDig=false;m.allow1by1towers=false;m.allowParkour=false;m.allowSprinting=false;m.maxDropDown=2;m.scafoldingBlocks=[]
   // Cardinal routes avoid diagonal corner cutting from off-center starts.
   m.getMoveDiagonal=()=>{}
   for(const name of ['lava','fire','water','sweet_berry_bush','cactus','powder_snow'])if(bot.registry.blocksByName[name])m.blocksToAvoid.add(bot.registry.blocksByName[name].id)

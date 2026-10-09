@@ -140,6 +140,19 @@ class ExplorationRecoveryAgent:
         if not pos or not self.state.get("minecraft.autonomous"):
             self.state.set("navigation.progress", None)
             return []
+        goal = self.state.get("brain.goal", "").lower().split()
+        looping = self.state.get("adaptation.progress",{}).get("looping")
+        if looping and not sensed.get("sleeping") and not (goal[:1] and goal[0] in {"stay","wait","rest","stop"}):
+            # Try different measured effects. No hard-coded channel meanings.
+            phase = int(now//6)%6
+            pitch_sign = 1 if sensed.get("orientation",{}).get("pitch",0)<-.2 else -1
+            effect, sign = [("yaw",1),("pitch",pitch_sign),("forward",-1),("sideways",1),("forward",1),("sideways",-1)][phase]
+            available = choose_channel(self.state,effect,sign)
+            if available:
+                self.state.set("navigation.recovery",{"reason":"Local repetition: trying a different learned effect","effect":effect,"since":now})
+                return [CognitiveEvent(self.name,"motivation.proposal",{"role":"recovery","skill":"muscle_experiment",
+                    "channel":available["channel"],"duration_ms":350,"score":1.0,
+                    "reason":f"Local loop: test measured {effect} ({sign:+d})", "target":None,"sensory_id":event.content["source_id"]})]
         progress = self.state.get("navigation.progress")
         if not progress or math.hypot(pos["x"]-progress["x"],pos["z"]-progress["z"]) > 1.5:
             self.state.set("navigation.progress", {"x":pos["x"],"z":pos["z"],"since":now})

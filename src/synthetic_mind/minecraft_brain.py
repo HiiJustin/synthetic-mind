@@ -98,6 +98,8 @@ class MinecraftBrain:
         sensed = state.get("minecraft.sensed", {})
         blocks = sensed.get("visibleBlocks", [])
         context = {"identity": self.engine.self_model.load().identity_id,
+            "progress": state.get("adaptation.progress",{}),
+            "feedback": state.get("adaptation.feedback",{}),
             "survival": {"status":state.get("survival.status"),"latest":state.get("survival.latest"),"danger_types":list(state.get("survival.dangers",{}))[-6:],"deaths":state.get("survival.deaths",0)},
             "movement_enabled": state.get("minecraft.autonomous", False),
             "drives": state.get("cognition.drives", {}),

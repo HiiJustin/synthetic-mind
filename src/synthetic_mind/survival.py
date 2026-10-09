@@ -79,7 +79,7 @@ class OutcomeMemoryAgent:
         records=s.get('survival.routines',{});r=records.get(key,{'successes':0,'failures':0})
         success=event.kind=='minecraft.action_result' and c.get('verified') is True
         r['successes' if success else 'failures']+=1
-        r.update(retry_after=now+(3 if success else min(180,15*r['failures'])),evidence_id=event.id,origin='supplied routine; measured reliability')
+        r.update(retry_after=now+(3 if success else min(600,30*r['failures'])),evidence_id=event.id,origin='supplied routine; measured reliability')
         records[key]=r;s.set('survival.routines',dict(list(records.items())[-256:]))
         summary={'action':command['action'],'success':success,'evidence_id':event.id,'detail':c.get('message'), 'origin':'supplied routine; measured outcome'}
         s.set('survival.latest',summary)
@@ -102,6 +102,9 @@ class SurvivalNeedAgent:
         if c['action'] in ROUTINES and not valid_routine(c,self.state.get('minecraft.sensed',{}),self.state):return []
         r=self.state.get('survival.routines',{}).get(command_key(c),{})
         if r.get('retry_after',0)>time.time():return []
+        # Repeated failure lowers a routine bid even after cooldown expires.
+        score += max(-.04,min(.04,self.state.get('adaptation.actions',{}).get(c['action'],{}).get('mean_feedback',0)*.04))
+        score -= min(.12, .025*r.get('failures',0)/max(1,r.get('successes',0)+1))
         self.state.set('survival.intent_'+self.role,reason)
         return [CognitiveEvent(self.name,'motivation.proposal',{'role':'survival_'+self.role,'skill':'routine','score':score,'reason':reason,'target':None,'experiment':c,'sensory_id':event.content['source_id']})]
     async def on_event(self,event):
@@ -132,6 +135,7 @@ class SurvivalNeedAgent:
                 if safe:return offer({'action':'navigate','target':{**safe[-1]['position'],'y':safe[-1]['position']['y']+1}},1.01,'Increase distance from observed hostile')
         if self.role=='food':
             hungry=obs.get('hunger',0)>.1 or obs.get('health',20)<20 and obs.get('food',20)<20
+            s.set('survival.food_status', 'Hungry: food available' if hungry and any(i in FOOD for i in inv) else 'Hungry: seeking food' if hungry else 'Food level sufficient; no eating needed')
             if hungry and any(i in FOOD for i in inv):return offer({'action':'eat'},1.04,'Food is available; restore hunger and permit natural regeneration')
             if inv.get('wheat',0)>=3 and any(b['name']=='crafting_table' and b.get('distance',999)<4 for b in blocks):return offer({'action':'craft','item':'bread','count':1},.99,'Test recipe using available wheat')
             if hungry:
@@ -185,7 +189,9 @@ class SurvivalNeedAgent:
             if int(now)%60<10:return []
             visited=s.get('survival.destinations',{})
             candidates=[b for b in blocks if b['name'] in {'grass_block','dirt','stone','oak_planks','cobblestone'} and 3<b.get('distance',0)<8]
-            candidates.sort(key=lambda b:(visited.get(str({**b['position'],'y':b['position']['y']+1}),0),-b.get('distance',0)))
+            from .adaptation import cell
+            counts=s.get('adaptation.visits',{})
+            candidates.sort(key=lambda b:(counts.get(cell(b['position']),0),visited.get(str({**b['position'],'y':b['position']['y']+1}),0),-b.get('distance',0)))
             for b in candidates:
                 target={**b['position'],'y':b['position']['y']+1}
                 if now-visited.get(str(target),0)<90:continue

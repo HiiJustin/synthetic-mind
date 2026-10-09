@@ -8,9 +8,13 @@ What happens when a persistent system senses a world, builds memories, competes 
 
 Minecraft supplies the environment. Separate modules handle perception, needs, attention, memory, self-model, criticism and action selection. A shared local language model provides occasional deliberation. The system exposes its decisions and failures so they can be studied.
 
-**v0.14.1 · Experimental · Windows-first · Local inference**
+**v0.15.0 · Experimental · Windows-first · Local inference**
 
 Navigation can still loop within a small area. Reliable overnight autonomy and complete house construction have not been demonstrated. This project makes no claim of consciousness.
+
+## New in v0.15
+
+Clickable local controls, an event-driven brain-module schematic, local-loop detection, bounded outcome feedback, and resampling of uncertain learned motor effects. These are experimental improvements; long unattended reliability remains unproven. See [the current handoff](HANDOFF.md).
 
 ## Start here
 
@@ -54,7 +58,7 @@ Vision is structured game data, not screenshots. Hearing is game-event data, not
 
 The remaining observed failure is repetitive exploration: the bot moves but stays in a small area and retries unreachable destinations. A responsive controller and plausible speech do not establish meaningful goal progress.
 
-At the last code update, **93 Python tests passed**, including a repeated-action controller-stall regression. **25 Node tests passed** on the unchanged v0.14 body code. Short tests are not overnight validation.
+At the last code update, **100 Python tests passed**, including a repeated-action controller-stall regression. **25 Node tests passed** on the unchanged v0.14 body code. Short tests are not overnight validation.
 
 World saves, learning databases, dependencies and machine-specific logs are excluded from Git. The server is intended for loopback use with offline authentication. Follow the setup guide before using an existing installation.
 

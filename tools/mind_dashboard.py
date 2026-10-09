@@ -7,10 +7,17 @@ import json
 import time
 from pathlib import Path
 import sqlite3
+import sys
+import threading
 from urllib.parse import urlsplit, parse_qs
 
 ROOT = Path(__file__).resolve().parents[1]
-NAMESPACES = ('survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
+sys.path.insert(0,str(ROOT/'src'))
+from synthetic_mind.operator_control import enqueue
+CONTROL_LOCK = threading.Lock()
+STREAM_COUNTS = {}
+
+NAMESPACES = ('adaptation.progress','adaptation.feedback','adaptation.actions','operator.last_control','learning.enabled','survival.food_status','survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
               'minecraft.sensed_at', 'minecraft.world_id', 'cognition.drives', 'council.winner',
               'council.disagreements', 'council.blocked_reason', 'sensorimotor.models', 'sensorimotor.latest',
               'sensorimotor.discovery', 'sensorimotor.developmental', 'learning.last_lesson',
@@ -31,7 +38,11 @@ def read_stream(database):
     snapshot = read_snapshot(database)
     with closing(sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True, timeout=1)) as db:
         boot = db.execute("SELECT timestamp FROM events WHERE kind='runtime.boot' ORDER BY seq DESC LIMIT 1").fetchone()
-        results = db.execute("SELECT COUNT(*) FROM events WHERE kind='minecraft.action_result'").fetchone()[0]
+        cache=STREAM_COUNTS.get(str(database),{})
+        if time.time()-cache.get('time',0)>30:
+            cache={'time':time.time(),'count':db.execute("SELECT COUNT(*) FROM events WHERE kind='minecraft.action_result'").fetchone()[0]}
+            STREAM_COUNTS[str(database)]=cache
+        results=cache['count']
     snapshot['session_started'] = boot[0] if boot else None
     snapshot['action_results'] = results
     snapshot['server_time'] = time.time()
@@ -53,11 +64,30 @@ def read_event(database, event_id):
 
 def serve(database, port):
     class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            try:
+                expected=f'127.0.0.1:{port}'
+                # Same-origin JSON + custom header: external pages cannot submit controls.
+                if self.path!='/api/control' or self.headers.get('Host') not in {expected,f'localhost:{port}'}:raise ValueError('Invalid control endpoint')
+                origin=self.headers.get('Origin')
+                if origin not in {f'http://{expected}',f'http://localhost:{port}'}:raise ValueError('Same-origin controls only')
+                if self.headers.get('X-Mind-Control')!='1' or self.headers.get('Content-Type')!='application/json':raise ValueError('Invalid control request')
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=2048:raise ValueError('Invalid request size')
+                value=json.loads(self.rfile.read(size))
+                with CONTROL_LOCK: command_id=enqueue(ROOT/'work/controls',value)
+                body=json.dumps({'id':command_id,'status':'queued; waiting for running bot'}).encode();code=202
+            except (ValueError,OSError) as exc:
+                body=json.dumps({'error':str(exc)}).encode();code=400
+            self.send_response(code);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+
         def do_GET(self):
             route = urlsplit(self.path)
             try:
                 if route.path == '/':
                     body, kind = (ROOT/'tools/dashboard.html').read_bytes(), 'text/html; charset=utf-8'
+                elif route.path == '/brain-map.js':
+                    body, kind = (ROOT/'tools/brain-map.js').read_bytes(), 'application/javascript; charset=utf-8'
                 elif route.path in ('/overlay', '/overlay.html'):
                     body, kind = (ROOT/'tools/stream_overlay.html').read_bytes(), 'text/html; charset=utf-8'
                 elif route.path == '/api/stream':
@@ -84,7 +114,7 @@ def serve(database, port):
         def log_message(self, *_): pass
 
     server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
-    print(f'Synthetic Mind observatory: http://127.0.0.1:{port}\nRead-only; Ctrl+C closes this window.', flush=True)
+    print(f'Synthetic Mind observatory: http://127.0.0.1:{port}\nLocal controls; Ctrl+C closes this window.', flush=True)
     try: server.serve_forever()
     except KeyboardInterrupt: pass
     finally: server.server_close()

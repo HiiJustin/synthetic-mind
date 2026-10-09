@@ -24,10 +24,14 @@
 .badge{position:absolute;right:18px;top:17px;color:#6e8791;font-size:10px;letter-spacing:2px}.live{color:#ff5d72}.counter{font-size:23px;color:#f0fbff;letter-spacing:2px}.tiny{font-size:10px;color:#718995;letter-spacing:2px}.flash{animation:flash .15s}
 @keyframes pulse{50%{opacity:.35;box-shadow:none}}@keyframes blink{50%{opacity:0}}@keyframes meter{to{width:81%}}@keyframes goal{0%,100%{width:0%}45%{width:51%}72%{width:46%}}@keyframes flash{50%{opacity:.2}}
 .stats .row{margin:5px 0}.counter{font-size:18px}.goaltext{font-size:16px;max-height:48px;overflow:hidden}.chatinner{font-size:12px;line-height:1.35;max-height:295px;overflow:hidden}.placeholder{font-size:11px}.termline{font-size:11px}.fill,.goalfill{animation:none}
+
+.brain-layout{display:flex;align-items:center;gap:16px}.brain-layout svg{width:65%;max-height:260px}.brain-legend{font-size:12px;line-height:2;color:#9cb9c8}.control-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.control-buttons button{padding:12px 18px;font-size:14px}input[type=text]{background:#101822;border:1px solid #51647b;border-radius:6px;padding:12px;color:white;width:75%}.control-message{min-height:24px;color:#a9e6cb}
+
+.brain-panel{left:28px;top:120px;width:440px;padding:16px;height:300px}.brain-panel .brain-layout svg{max-height:200px}.brain-panel small{font-size:10px;color:#9cb9c8}
 </style>
 </head>
 <body>
-<div class="overlay">
+<div class="overlay"><div class="panel brain-panel"><div class="title">MODULE ACTIVITY</div><div id="brainMap"></div><div id="progressInfo" class="tiny"></div></div>
   <div class="scan"></div><div class="vignette"></div>
 
   <div class="panel header">
@@ -68,7 +72,9 @@
     <div class="row"><div class="label">RESULTS</div><div class="counter" id="actions">—</div></div>
   </div>
 </div>
+<script src="http://127.0.0.1:8765/brain-map.js"></script>
 <script>
+MindMap.mount("brainMap");
 const $=id=>document.getElementById(id),put=(id,v)=>$(id).textContent=v;
 const endpoint=location.protocol==='file:'?'http://127.0.0.1:8765/api/stream':'/api/stream';
 function line(parent,message,cls='termline'){const d=document.createElement('div');d.className=cls;d.textContent=message;parent.appendChild(d)}
@@ -77,6 +83,7 @@ async function update(){try{
  const response=await fetch(endpoint,{cache:'no-store'});if(!response.ok)throw Error('Telemetry unavailable');
  const d=await response.json(),s=d.state,b=s['minecraft.sensed']||{},w=s['council.winner']||{},models=s['sensorimotor.models']||{};
  const age=d.server_time-(s['minecraft.sensed_at']||0),online=!!s['minecraft.connection']?.connected&&age<5;
+ MindMap.update(d.health,online);put('progressInfo',s['adaptation.progress']?.status||'Awaiting observations');
  put('online',online?'CONNECTED':'OFFLINE / STALE');document.querySelector('.badge').textContent=online?'LIVE TELEMETRY':'FEED STALE';
  put('mode',online?(s['minecraft.autonomous']?'AUTONOMOUS':'PAUSED'):'DISCONNECTED');
  put('goal',s['brain.goal']||'No objective recorded');
