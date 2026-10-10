@@ -65,7 +65,7 @@ function motorProximity (bot, range = 1.2) {
 function observe (bot, config, sequence) {
   if (!bot.entity) return null
   const body = bot.entity
-  const eye = body.position.offset(0, body.height || 1.62, 0)
+  const eye = body.position.offset(0, body.eyeHeight || 1.62, 0)
   const forward = direction(body.yaw, body.pitch)
   const halfAngleCos = Math.cos(config.fieldOfView * Math.PI / 360)
   const candidates = []
@@ -83,10 +83,16 @@ function observe (bot, config, sequence) {
     }
   }
   candidates.sort((a, b) => a.range - b.range)
+  const firstTypes = new Set()
+  const diverse = []; const repeated = []
+  for (const c of candidates) {
+    if (!lineVisible(bot, eye, c.center, true)) continue
+    if (!firstTypes.has(c.block.name)) { firstTypes.add(c.block.name); diverse.push(c) } else repeated.push(c)
+  }
   const visibleBlocks = []
-  for (const candidate of candidates) {
+  for (const candidate of [...diverse, ...repeated]) {
     if (visibleBlocks.length >= config.maxVisibleBlocks) break
-    if (lineVisible(bot, eye, candidate.center, true)) visibleBlocks.push({ name: candidate.block.name, position: xyz(candidate.block.position), distance: Number(candidate.range.toFixed(2)), knownDrops: (bot.registry?.blocksByName?.[candidate.block.name]?.drops || []).map(id=>bot.registry.items[id]?.name).filter(Boolean), knowledgeOrigin: 'supplied game material knowledge' })
+    visibleBlocks.push({ id: `block:${bot.game?.dimension || 'unknown'}:${candidate.block.position.x},${candidate.block.position.y},${candidate.block.position.z}`, kind: 'block', relative: {x:candidate.center.x-eye.x,y:candidate.center.y-eye.y,z:candidate.center.z-eye.z}, name: candidate.block.name, position: xyz(candidate.block.position), distance: Number(candidate.range.toFixed(2)), knownDrops: (bot.registry?.blocksByName?.[candidate.block.name]?.drops || []).map(id=>bot.registry.items[id]?.name).filter(Boolean), knowledgeOrigin: 'supplied game material knowledge' })
   }
   const visibleEntities = []
   for (const entity of Object.values(bot.entities || {})) {

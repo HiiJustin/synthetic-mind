@@ -114,3 +114,10 @@ test('one-block step is distinguished from a two-block wall', () => {
   assert.throws(() => validateCommand({id:'x',action:'move',control:'forward',jump:'yes'}))
   assert.equal(validateCommand({id:'x',action:'move',control:'forward',jump:true}).jump, true)
 })
+
+ test('type diversity retains a farther visible target under a tight cap', () => {
+  const bot=fixture()
+  const seen=observe(bot,{...defaults,visionRange:5,maxVisibleBlocks:2},1).visibleBlocks
+  assert.ok(seen.some(b=>b.name==='stone'))
+  assert.ok(seen.every(b=>b.id && b.relative && b.kind==='block'))
+ })

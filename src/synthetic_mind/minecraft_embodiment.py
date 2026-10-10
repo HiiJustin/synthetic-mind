@@ -11,8 +11,13 @@ def normalize(sensed):
     p=sensed.get('position',{});orient=sensed.get('orientation',{})
     cell=tuple(math.floor(p.get(k,0)/3) for k in ('x','y','z'))
     view=(round(math.atan2(math.sin(orient.get('yaw',0)),math.cos(orient.get('yaw',0)))/.5),round(orient.get('pitch',0)/.3))
-    counts=dict(Counter(b['name'] for b in blocks));resources={i['name']:i['count'] for i in sensed.get('inventory',[])}
-    objects=[{'type':b['name'],'position':b['position'],'distance':b.get('distance'),'observed':True} for b in blocks[:24]]
+    counts=dict(Counter(b['name'] for b in blocks));resources={}
+    for item in sensed.get('inventory',[]):resources[item['name']]=resources.get(item['name'],0)+item['count']
+    objects=[{'id':b.get('id'), 'type':b['name'],'kind':'block','position':b['position'],'distance':b.get('distance'),'relative':b.get('relative'),'observed':True} for b in blocks]
+    objects += [{'id':e['id'],'type':e['type'],'kind':'entity','position':e.get('position'),'distance':e.get('distance'),'observed':True} for e in entities]
+    # Preserve type diversity before repeated surfaces fill working memory.
+    frequencies=Counter(obj['type'] for obj in objects)
+    objects.sort(key=lambda obj: (frequencies[obj['type']],obj.get('distance') or 0))
     return {'resources':resources,'held':sensed.get('heldItem'),'target_type':(sensed.get('crosshair') or {}).get('name'),
         'contact':sensed.get('contact',{}),'nearby_types':sorted({e['type'] for e in entities}),
         'vitals':{'integrity':sensed.get('health',20)/20,'energy':sensed.get('food',20)/20},

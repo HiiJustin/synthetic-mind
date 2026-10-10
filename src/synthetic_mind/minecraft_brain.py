@@ -111,7 +111,7 @@ class MinecraftBrain:
             "action_learning": {"known": list(state.get("learning.actions", {}))[-6:], "latest": {k: (state.get("learning.last_lesson") or {}).get(k) for k in ("primitive", "success")}},
             "self_summary": self.engine.self_model.load().autobiographical_summary,
             "known_failures": self.engine.self_model.load().known_failures[-3:],
-            "goal": state.get("brain.goal", "Explore cautiously, notice interesting changes, and learn from outcomes."),
+            "goal": state.get("embodied.goal_state", {}).get("text") or state.get("brain.goal", "Explore cautiously, notice interesting changes, and learn from outcomes."),
             "human_message": text, "body": {key: sensed.get(key) for key in ("position", "orientation", "health", "hunger", "onGround", "proximity", "contact", "inventory", "heldItem", "selectedSlot", "crosshair", "timeOfDay", "sleeping")},
             "scene": state.get("cognition.scene", {}),
             "nearest_blocks": sorted(blocks, key=lambda b: b.get("distance", 999))[:10],

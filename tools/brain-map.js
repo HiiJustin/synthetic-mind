@@ -17,7 +17,7 @@ window.MindMap=(()=>{
   for(const [key,label,x,y,color]of arranged.groups){network.append(svg('rect',{x:x-131,y:y-118,width:262,height:232,rx:25,fill:'#112031','fill-opacity':'.8',stroke:color,'stroke-opacity':'.2'}));const t=svg('text',{x:x-109,y:y-88,fill:color,'font-size':16,'font-family':'system-ui','font-weight':600});t.textContent=label;network.append(t)}
   const links=svg('g'),nodes=svg('g');network.append(links,nodes);
   const detail=div('mind-detail');detail.innerHTML='<h3>Explore the module system</h3><p>Each dot is an actual registered module. Hover or focus a dot for a plain-English explanation; select it to keep its evidence visible.</p>';
-  const legend=div('mind-legend');for(const [label,color]of [['● Input received','#78c7ff'],['● State changed','#ffd479'],['● Output emitted','#70ffcd']]){const item=document.createElement('span');item.textContent=label;item.style.color=color;legend.append(item)}
+  const legend=div('mind-legend');for(const [label,color]of [['● Input received (steady)','#78c7ff'],['● State changed','#ffd479'],['● Output emitted','#70ffcd']]){const item=document.createElement('span');item.textContent=label;item.style.color=color;legend.append(item)}
   const note=div('mind-note','Brain-shaped layout, not biological anatomy. Links are recorded deliveries, not proof of influence. No activity is invented when offline.');
   const tip=div('mind-tooltip');tip.hidden=true;root.append(top,network,legend,note,detail,tip);
   instances.set(id,{groups:arranged.groups,root,status,network,links,nodes,detail,tip,layout:new Map(),prior:{},routePrior:{},selected:null,health:{},activity:{},state:{},online:false});
@@ -46,8 +46,8 @@ window.MindMap=(()=>{
   i.status.textContent=`${online?'LIVE':'OFFLINE / last recorded state'} · ${names.length} modules · ${i.activity.window_events||0} recent events${state['brain.busy']?' · model working':''}`;
   for(const [name,node]of i.layout){const h=i.health[name]||{},old=i.prior[name],last=i.activity.latest?.[name];const fresh=last&&Date.now()-Date.parse(last.timestamp)<4000;
    const changed=old&&h.processed!==old.processed;const output=old&&(h.outputs||0)>(old.outputs||0);const writes=old&&(h.changes||0)>(old.changes||0);const emitted=(i.activity.recent||[]).some(e=>e.source===name&&Date.now()-Date.parse(e.timestamp)<2000);
-   const color=output||emitted?'#70ffcd':writes?'#ffd479':'#78c7ff';const active=online&&(fresh&&(changed||!old)||emitted);
-   node.dot.setAttribute('fill',active?color:'#254356');node.dot.style.color=color;node.dot.classList.remove('mind-pulse');if(active){void node.dot.getBoundingClientRect();node.dot.classList.add('mind-pulse')}
+   const color=output||emitted?'#70ffcd':writes?'#ffd479':'#78c7ff';const active=online&&Boolean(old)&&(output||writes);
+   node.dot.setAttribute('fill',active?color:(online&&fresh&&changed?'#78c7ff':'#254356'));node.dot.style.color=color;node.dot.classList.remove('mind-pulse');if(active){void node.dot.getBoundingClientRect();node.dot.classList.add('mind-pulse')}
   }
   i.links.replaceChildren();for(const route of i.activity.routes||[]){const a=i.layout.get(route.source),b=i.layout.get(route.target);if(!a||!b)continue;const fresh=online&&Date.now()-Date.parse(route.timestamp)<4000,key=route.source+'|'+route.target;const path=svg('path',{d:`M${a.x} ${a.y} C${a.x+55} ${a.y},${b.x-55} ${b.y},${b.x} ${b.y}`,fill:'none',stroke:fresh?'#69e1d0':'#6b8aab','stroke-width':fresh?1.5:1,'stroke-opacity':fresh?.35:.08,'stroke-dasharray':'4 7'});const title=svg('title');title.textContent=`${route.source} → ${route.target}: ${route.kind} (${route.count} deliveries in sampled events)`;path.append(title);if(fresh&&i.routePrior[key]!==route.event_id)path.classList.add('mind-flow');i.links.append(path);i.routePrior[key]=route.event_id}
   if(i.selected)inspect(i,i.selected);i.prior=JSON.parse(JSON.stringify(i.health));

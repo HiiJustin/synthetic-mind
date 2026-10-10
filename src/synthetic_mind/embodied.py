@@ -135,21 +135,36 @@ class GoalMemory(Module):
                 s.set('embodied.hypothesis',{'text':event.content.get('focus',''),'key':event.content.get('candidate_key'),'confidence':event.content.get('confidence',0),'time':time.time(),'origin':'model hypothesis'})
             return []
         o=s.get('embodied.observation',{});known=s.get('embodied.knowledge',{})
-        goal=s.get('embodied.goal',s.get('brain.goal','explore and learn'));words=set(re.findall(r'[a-z0-9]+',goal.lower()))
+        # The operator control room and console share brain.goal as the authority.
+        override=s.get('brain.goal',s.get('embodied.goal','')).strip()
+        autonomous=not override or override.lower()=='auto'
+        goal=override
         resources=set(known)|set(o.get('resources',{}))
         for recipe in known.values():resources.update(recipe.get('inputs',{}))
-        desired={r:1.0 for r in resources if set(r.split('_'))<=words}
-        # Only expand unmet prerequisites. All edges retain supplied-knowledge provenance.
+        for candidate in s.get('embodied.candidates',[]):resources.update(candidate.get('prior',{}).get('resources',{}))
+        if autonomous:
+            options=sorted(r for r in resources if o.get('resources',{}).get(r,0)==0 and any(c.get('prior',{}).get('resources',{}).get(r,0)>0 for c in s.get('embodied.candidates',[])))
+            goal=('Collect 1 '+options[0].replace('_',' ')) if options else 'Explore and measure an unfamiliar action'
+        words=set(re.findall(r'[a-z0-9]+',goal.lower()))
+        words.update(w[:-1] for w in list(words) if w.endswith('s'))
+        amount=re.search(r'\b(?:collect|gather|obtain|get)\s+(\d+)\b',goal.lower())
+        count=max(1,int(amount.group(1))) if amount else 1
+        targets={r:count for r in resources if set(r.split('_'))<=words}
+        desired={r:1.0 for r,n in targets.items() if o.get('resources',{}).get(r,0)<n}
         needs=dict(desired);frontier=list(desired.items());visited=set()
         for _ in range(6):
             following=[]
             for item,value in frontier:
-                if item in visited or o.get('resources',{}).get(item,0)>0:continue
+                if item in visited:continue
                 visited.add(item)
                 for ingredient in known.get(item,{}).get('inputs',{}):
+                    if o.get('resources',{}).get(ingredient,0)>0:continue
                     needs[ingredient]=max(needs.get(ingredient,0),value*.8);following.append((ingredient,value*.8))
             frontier=following
-        s.set('embodied.goal_state',{'text':goal,'desired':desired,'resource_relevance':needs,'origin':'goal tokens + taught dependency graph'})
+        s.set('embodied.goal_state',{'text':goal,'desired':desired,'targets':targets,
+            'progress':{r:min(n,o.get('resources',{}).get(r,0)) for r,n in targets.items()},
+            'complete':bool(targets) and not desired,'mode':'autonomous' if autonomous else 'operator',
+            'resource_relevance':needs,'origin':'available affordances' if autonomous else 'operator goal + taught dependencies'})
         return []
 
 
