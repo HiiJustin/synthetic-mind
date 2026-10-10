@@ -1,5 +1,6 @@
 'use strict'
 // Supplied, bounded body routines. Selection/reliability is learned by Python modules.
+const { attackTarget } = require('./attack-target')
 const { lineVisible, distance } = require('./senses')
 const ROUTINES = ['navigate','harvest','craft','place_at','sleep','strike']
 const BUILD = /^(dirt|cobblestone|[a-z_]+_planks|crafting_table)$/
@@ -114,7 +115,7 @@ async function execute(bot,c,check) {
   if(distance(eye,point)>3.2||!lineVisible(bot,eye,point))throw Error('Entity out of reach or occluded')
   let hurt=false;const onHurt=(entity,source)=>{if(entity.id===e.id&&source?.id===bot.entity.id)hurt=true}
   bot.on('entityHurt',onHurt)
-  try{await bot.lookAt(point,true);check();bot.attack(e);await new Promise(r=>setTimeout(r,650));check()}finally{bot.removeListener('entityHurt',onHurt)}
+  try{await bot.lookAt(point,true);check();attackTarget(bot,e);await new Promise(r=>setTimeout(r,650));check()}finally{bot.removeListener('entityHurt',onHurt)}
   result={verified:hurt,target_type:e.name,held:bot.heldItem?.name||'empty',evidence:'server-attributed hurt event; damage amount unknown'}
  }
  return {before,after:{inventory:inventory(bot),food:bot.food,health:bot.health,position:{...bot.entity.position}},...result}

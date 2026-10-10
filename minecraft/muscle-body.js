@@ -1,5 +1,6 @@
 'use strict'
 
+const { attackTarget } = require('./attack-target')
 const { motorProximity, cursorBlock } = require('./senses')
 const DEFAULT_WIRING = ['left', 'jump', 'forward', 'back', 'right', 'slot_next', 'slot_previous', 'yaw_left', 'yaw_right', 'pitch_up', 'pitch_down', 'use', 'attack']
 const CHANNELS = DEFAULT_WIRING.map((_, i) => `m${i}`)
@@ -63,7 +64,7 @@ async function activateMuscle (bot, command, guard, wiring = DEFAULT_WIRING) {
       await wait(150)
     } else {
       const entity = bot.entityAtCursor?.(3)
-      if (entity) bot.attack(entity)
+      if (entity) attackTarget(bot, entity)
       else bot.swingArm()
       await wait(100)
     }
