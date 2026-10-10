@@ -12,4 +12,12 @@ Rolling-history trace updates use lossless remove/append operations instead of c
 
 Dashboard shows attention, trial review, goal history and model roles. Module activity remains actual telemetry, not staged neural animation. This is a modular software experiment, not evidence of consciousness or full reinforcement learning.
 
-Automated checks: 138 Python test executions and 33 JavaScript tests passed. A short installed-world validation is in progress; final results will be appended. No claim yet of completing the three-log goal or unattended reliability.
+Validation: full Python suite plus new tests covers resource-goal closed-loop completion in a simulated body, selective attention, failure-driven reselection, inventory stacks, auto-goal persistence, launcher lease, and lossless compact traces. JavaScript tests cover real body helpers and visibility. The simulated three-log test passes; it is NOT live success.
+
+Two two-minute installed-world trials started in an enclosed dirt/stone area at Y=62. No disconnect; clean server save. Bot did not escape or collect oak logs. Persistent field evidence remains in SQLite. Do not advertise overnight autonomy or completed live acceptance.
+
+Further fixes after the first trial: short move+jump combinations, up to three candidate blocks per material, explicit dropped-item pickup affordances, horizontal displacement feedback, and a penalty for repeated changes without useful world/need/resource/novelty effects (slot cycling is no longer automatically treated as useful). These remain utility heuristics, not trained neural control. Repeated identical attention content does not emit another workspace packet.
+
+Small critic retested after stronger factual-review wording; it still approved unsupported claims. Download remains available, but role_models defaults stay on the existing 8B model. No new small model is active.
+
+Remaining: robust escape and longer action-sequence learning, live three-log success, validated specialized model assignments, greater field of view/partial-surface perception, bounded archival storage. Preserve this negative live result for the next reviewer.

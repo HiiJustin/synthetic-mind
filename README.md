@@ -1,3 +1,25 @@
+## v0.19: attention and outcome-driven action experiments
+
+New modules rank goal-relevant observations, review ineffective trials, and maintain self-generated goals (`/goal auto`). Directed steps and dropped-item pickup complement opaque muscle experiments. The dashboard shows attention, trial feedback, goal history, and configured model roles. A launcher lease prevents duplicate launcher sessions.
+
+**Current limitation:** the three-log task passes a simulated-body regression test, but live testing in an enclosed underground area did not complete it. This is an experimental embodied module system, not reliable unattended Minecraft automation or evidence of consciousness. [Detailed handoff](docs/V019_HANDOFF.md).
+
+```mermaid
+flowchart LR
+  Body[POV body observations] --> Scene[Scene memory]
+  Body --> Goals[Operator or autonomous goals]
+  Scene --> Attention[Selective attention: eight objects]
+  Goals --> Attention
+  Attention --> Workspace[Background integration]
+  Workspace --> Model[Planner and critic: sequential inference]
+  Model --> Selector[Contextual action selection]
+  Goals --> Selector
+  Selector --> Body
+  Body --> Review[Measured outcomes and trial review]
+  Review --> Learning[Value and prediction updates]
+  Learning --> Selector
+```
+
 # Synthetic Mind
 
 ## v0.17: readable module observatory

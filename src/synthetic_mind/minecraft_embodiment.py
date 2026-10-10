@@ -72,6 +72,7 @@ class MinecraftEmbodiment:
             before={**before,'position':{k:before[k] for k in ('x','y','z')}}
         if before.get('position') and after.get('position'):
             numeric['distance']=math.dist([before['position'][k] for k in ('x','y','z')],[after['position'][k] for k in ('x','y','z')])
+            numeric['horizontal_distance']=math.dist([before['position'][k] for k in ('x','z')],[after['position'][k] for k in ('x','z')])
         effects['measured']=numeric
         changed=resources!=record['before'].get('resources',{}) or any(after.get(k)!=before.get(k) for k in ('held','yaw','pitch','position','target') if k in after and k in before)
         changed=changed or (c.get('verified') is True and c.get('block_after') is not None)
@@ -93,12 +94,17 @@ class MinecraftEmbodiment:
         for dy,dp in ((.8,0),(-.8,0),(0,.5),(0,-.5)):
             pitch=max(-1.5,min(1.5,orientation.get('pitch',0)+dp));yaw=orientation.get('yaw',0)+dy
             add({'action':'look','yaw':yaw,'pitch':pitch},{'yaw_delta':dy,'pitch_delta':dp},information=.22)
+        # Supplied short motor combinations allow locomotion experiments beyond single keys.
+        # Selection remains generic: these are possibilities, not an obstacle escape script.
+        for control in ('forward','back','left','right'):
+            for jump in (False,True):
+                add({'action':'move','control':control,'jump':jump},{'control':control,'jump':jump},cost=.08)
         for item in obs.get('inventory',[]):
             if item['name']!=held:add({'action':'equip','item':item['name']})
         # Affordances express possibilities. Their selection belongs to the generic learner.
-        seen=set()
+        seen=Counter()
         for block in obs.get('visibleBlocks',[]):
-            if block['name'] in seen:continue
+            if seen[block['name']]>=3:continue
             if block.get('distance',999)>3:
                 target=block['position'];pos=obs.get('position',{})
                 dx=target['x']+.5-pos.get('x',0);dz=target['z']+.5-pos.get('z',0)
@@ -107,8 +113,8 @@ class MinecraftEmbodiment:
                         {'toward':block['name'],'jump':bool(obs.get('proximity',{}).get('canStepUp'))},
                         {'resources':{item:.65 for item in block.get('knownDrops',[])}})
             if block.get('distance',999)>4:
-                seen.add(block['name']);continue
-            seen.add(block['name']);target=block['position']
+                seen[block['name']]+=1;continue
+            seen[block['name']]+=1;target=block['position']
             add({'action':'dig','target':target,'block':block['name']},{'block':block['name'],'held':held},
                 {'resources':{item:1 for item in block.get('knownDrops',[])}})
             add({'action':'use_block','target':target,'block':block['name']},{'block':block['name'],'held':held})

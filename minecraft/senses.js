@@ -115,7 +115,8 @@ function observe (bot, config, sequence) {
     health: bot.health, hunger: (20 - bot.food) / 20, food: bot.food,
     oxygen: finite(bot.oxygenLevel) ? bot.oxygenLevel : null,
     contact: { horizontal: Boolean(body.isCollidedHorizontally), vertical: Boolean(body.isCollidedVertically) },
-    visibleBlocks, visibleEntities: visibleEntities.slice(0, 16),
+    visibleBlocks, visibleEntities: visibleEntities.sort((a,b)=>a.distance-b.distance).slice(0, 16),
+    visionCoverage:{range:config.visionRange,fieldOfView:config.fieldOfView,observedSurfaces:diverse.length+repeated.length,reportedSurfaces:visibleBlocks.length,truncated:diverse.length+repeated.length>visibleBlocks.length,occluded:'unknown'},
     // Short-range motor clearance is a tactile/proximity abstraction, independent of vision.
     proximity: motorProximity(bot),
     inventory: bot.inventory.items().map(item => ({ name: item.name, count: item.count })).slice(0, 36),
@@ -127,7 +128,7 @@ function observe (bot, config, sequence) {
     worldTickRate: bot.worldTickRate || 20,
     sleeping: Boolean(bot.isSleeping), dimension: bot.game?.dimension || null,
     timeOfDay: bot.time ? bot.time.timeOfDay : null,
-    sensoryModel: 'filtered-structured-v1'
+    sensoryModel: 'structured-cone-v2'
   }
 }
 

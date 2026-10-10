@@ -16,6 +16,7 @@ class SelectiveAttention:
             ranked.append({**obj,'attention_score':score,'goal_relevance':goal})
         ranked.sort(key=lambda x:x['attention_score'],reverse=True)
         value={'objects':ranked[:8],'observed_count':len(ranked),'reason':'goal relevance, distance and novelty','evidence_id':event.id}
+        if old.get('objects')==value['objects'] and old.get('observed_count')==value['observed_count']:return []
         s.set('embodied.attention',value)
         return [CognitiveEvent(self.name,'attention.selected',value)]
 
@@ -30,9 +31,17 @@ class ProgressReview:
         record=next((r for r in s.get('embodied.eligibility',[]) if r['id']==c.get('id')),None)
         if not record:return []
         candidate=record.get('candidate') or {};key=self.site(candidate);trials=s.get('embodied.trial_review',{})
-        old=trials.get(key,{});fail=c.get('failed') or not c.get('changed')
+        measured=c.get('effects',{}).get('measured',{})
+        progress=any(v>0 for k,v in measured.items() if k.startswith('resource:')) or measured.get('horizontal_distance',0)>.2
+        s.set('embodied.stalled_trials',0 if progress else min(100,s.get('embodied.stalled_trials',0)+1))
+        old=trials.get(key,{})
+        world_change=c.get('effects',{}).get('block_after') is not None and c.get('changed')
+        need_change=any(abs(measured.get(k,0))>.01 for k in ('food','health'))
+        novel=s.get('embodied.perception',{}).get('novelty',0)>.5
+        useful=progress or world_change or need_change or novel
+        fail=c.get('failed') or not c.get('changed') or not useful
         streak=old.get('streak',0)+1 if fail else 0
-        value={'streak':streak,'penalty':min(4,streak*.8),'time':time.time(),'reason':'failed or no measured change' if fail else 'measured change','evidence_id':event.id}
+        value={'streak':streak,'penalty':min(4,streak*.8),'time':time.time(),'reason':'failed or no measured useful effect' if fail else 'measured useful effect','evidence_id':event.id}
         trials[key]=value;s.set('embodied.trial_review',dict(list(trials.items())[-256:]))
         s.set('embodied.progress_review',{**value,'family':candidate.get('family'),'target':candidate.get('command',{}).get('target')})
         return [CognitiveEvent(self.name,'subconscious.progress_reviewed',value)]

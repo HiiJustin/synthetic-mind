@@ -33,9 +33,15 @@ class AttentionProgressTests(unittest.IsolatedAsyncioTestCase):
         s.set('brain.goal','operator task');self.assertEqual(await module.on_event(CognitiveEvent('test','embodied.observation',{})),[])
     def test_visible_far_resource_has_directed_step(self):
         s=State();obs={'position':{'x':0,'y':0,'z':0},'visibleBlocks':[{'name':'oak_log','distance':7,'position':{'x':0,'y':1,'z':-7},'knownDrops':['oak_log']}]}
-        moves=[c for c in MinecraftEmbodiment(s).candidates(obs) if c['family']=='move']
+        moves=[c for c in MinecraftEmbodiment(s).candidates(obs) if c['family']=='move' and c['command'].get('target')]
         self.assertEqual(len(moves),1);self.assertGreater(moves[0]['prior']['resources']['oak_log'],0)
     def test_dropped_resource_has_pickup_not_attack(self):
         s=State();obs={'position':{'x':0,'y':0,'z':0},'visibleEntities':[{'id':2,'type':'item','distance':2,'position':{'x':0,'y':0,'z':-2},'item':{'name':'oak_log','count':1}}]}
         candidates=MinecraftEmbodiment(s).candidates(obs)
         self.assertTrue(any(c['parameters'].get('pickup')=='oak_log' for c in candidates));self.assertFalse(any(c['family']=='strike' for c in candidates))
+
+    async def test_slot_changes_alone_do_not_reset_trial_penalty(self):
+        s=State();candidate={'family':'muscle','parameters':{'channel':'m5'},'command':{}}
+        s.set('embodied.eligibility',[{'id':'a','candidate':candidate}])
+        for _ in range(3):await ProgressReview(s).on_event(CognitiveEvent('test','embodied.result',{'id':'a','changed':True,'effects':{'measured':{}}}))
+        self.assertEqual(s.get('embodied.progress_review')['streak'],3)

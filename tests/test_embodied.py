@@ -74,3 +74,31 @@ class EmbodiedIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(valid_hand_action({'action':'dig','block':'diamond_ore','target':{'x':8,'y':63,'z':0}},sensed))
         names=set(self.engine.registry.modules)
         self.assertIn('subconscious_reward',names);self.assertNotIn('survival_threat',names);self.assertNotIn('motor_skills',names)
+
+    async def test_resource_goal_closed_loop_with_simulated_body(self):
+        # Controlled perception/action fixture, not a claim of live Minecraft success.
+        import math
+        state=self.engine.state;state.set('minecraft.autonomous',True);state.set('brain.goal','Collect 3 oak logs')
+        x=0.0;count=0;blocks=[5,6,7];drops=[];families=[]
+        for tick in range(100):
+            state.set('embodied.next_action',0)
+            position={'x':x,'y':64,'z':0}
+            visible=[{'id':str(b),'name':'oak_log','position':{'x':b,'y':64,'z':0},'distance':abs(b+.5-x),'knownDrops':['oak_log']} for b in blocks]
+            entities=[{'id':100+b,'type':'item','position':{'x':b+.5,'y':64,'z':0},'distance':abs(b+.5-x),'item':{'name':'oak_log','count':1}} for b in drops]
+            items=[{'name':'oak_log','count':count}] if count else []
+            sensed={**MinecraftTests.senses(),'position':position,'visibleBlocks':visible,'visibleEntities':entities,'inventory':items,'heldItem':None,'food':20,'hunger':0,'health':20,'sequence':tick}
+            await self.session.ingest('minecraft.senses',sensed)
+            if state.get('embodied.goal_state',{}).get('complete'):break
+            cmd=self.sent[-1];families.append(cmd['action']);before={'position':position,'inventory':items};extra={}
+            if cmd['action']=='move' and cmd.get('target'):
+                target=cmd['target']['x']+(.5 if 'entity_id' not in cmd else 0)
+                x+=max(-1,min(1,target-x))
+            if cmd['action']=='dig':
+                b=cmd['target']['x']
+                if b in blocks and abs(b+.5-x)<=4:
+                    blocks.remove(b);drops.append(b);extra={'verified':True,'block_after':'air'}
+            picked=[b for b in drops if abs(b+.5-x)<1.4];count+=len(picked);drops=[b for b in drops if b not in picked]
+            after={'position':{'x':x,'y':64,'z':0},'inventory':[{'name':'oak_log','count':count}] if count else []}
+            await self.session.ingest('minecraft.action_result',{'command_id':cmd['id'],'action':cmd['action'],'before':before,'after':after,**extra})
+        self.assertEqual(count,3);self.assertTrue(state.get('embodied.goal_state')['complete'])
+        self.assertIn('move',families);self.assertIn('dig',families)

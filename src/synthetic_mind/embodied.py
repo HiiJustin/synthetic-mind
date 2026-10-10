@@ -206,9 +206,10 @@ class ActionSelector(Module):
             from .attention import ProgressReview
             trial=s.get('embodied.trial_review',{}).get(ProgressReview.site(candidate),{})
             trial_penalty=trial.get('penalty',0)*max(0,1-(now-trial.get('time',0))/120)
-            score+=advice-trial_penalty
+            mobility=min(1,s.get('embodied.stalled_trials',0)/10)*min(1,effects.get('horizontal_distance',0))
+            score+=advice-trial_penalty+mobility
             score-=candidate.get('cost',.05)
-            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'trial_penalty':-trial_penalty,'learned':calibrated_value,'prediction_reliability':reliability,'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats,'deliberation':advice,'uncertainty_bonus':.7*uncertainty,'repetition_penalty':-.22*repeats,'no_effect_penalty':-.12*min(8,no_effect),'failure_penalty':-.3*r.get('failures',0)/(1+n),'action_cost':-candidate.get('cost',.05)}})
+            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'mobility':mobility,'trial_penalty':-trial_penalty,'learned':calibrated_value,'prediction_reliability':reliability,'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats,'deliberation':advice,'uncertainty_bonus':.7*uncertainty,'repetition_penalty':-.22*repeats,'no_effect_penalty':-.12*min(8,no_effect),'failure_penalty':-.3*r.get('failures',0)/(1+n),'action_cost':-candidate.get('cost',.05)}})
         if not ranked:return []
         ranked.sort(key=lambda r:(r['score'],r['key']),reverse=True);winner=ranked[0]
         s.set('embodied.selection',{'winner':winner,'alternatives':ranked[1:5],'time':now})
