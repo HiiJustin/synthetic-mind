@@ -146,6 +146,16 @@ def initialize_camp(process) -> None:
 
 
 def launch(tempo="normal") -> int:
+    # OS releases this lease on crash; a second launcher cannot kick the first bot.
+    with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as lease:
+        if os.name == 'nt': lease.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE,1)
+        try: lease.bind(('127.0.0.1',25566))
+        except OSError as exc: raise RuntimeError('Another Synthetic Mind launcher is active (local port 25566). Use its console instead.') from exc
+        lease.listen(1)
+        return launch_owned(tempo)
+
+
+def launch_owned(tempo="normal") -> int:
     prepare()
     command = java_command()
     process = None

@@ -47,12 +47,13 @@ async def ollama_request(path: str, payload: dict | None = None, *, timeout: flo
 
 
 class OllamaModelBackend:
-    def __init__(self, model: str, schema: dict):
-        self.model, self.schema = model, schema
+    def __init__(self, model: str, schema: dict, think: bool | None = None):
+        self.model, self.schema, self.think = model, schema, think
         self.metrics = {}
 
     async def generate(self, *, system: str, input_text: str, max_tokens: int = 384) -> str:
         response = await ollama_request("/api/chat", {"model": self.model,
+            **({"think": self.think} if self.think is not None else {}),
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": input_text}],
             "stream": False, "format": self.schema, "keep_alive": "5m",
             "options": {"num_ctx": 4096, "num_predict": max_tokens, "temperature": 0}})

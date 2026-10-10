@@ -4,6 +4,9 @@ from collections import Counter
 
 # Descriptions are explanatory metadata. Activation always comes from runtime evidence.
 CATALOG = {
+ 'autonomous_goals':('Self-generated goals','workspace','Chooses an observed resource opportunity when operator goal is auto; holds it for up to two minutes, records outcome, and prefers untried goals.'),
+ 'selective_attention':('Selective attention','workspace','Ranks observed objects by current goal relevance, distance and novelty; admits eight into working attention.'),
+ 'subconscious_progress':('Trial review','learning','Tracks failed or ineffective action attempts at specific targets. Temporarily lowers their selection scores so alternatives can compete.'),
  'minecraft_embodiment':('Body interface','senses','Translates Minecraft observations into the common sensory format and sends selected actions back to the body.'),
  'minecraft_body':('Body state','senses','Keeps the latest position, health, inventory and connection state. Remembers only observed blocks.'),
  'minecraft_perception':('Language input','senses','Turns nearby chat and operator messages into attributed language observations.'),

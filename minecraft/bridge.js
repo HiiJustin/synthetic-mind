@@ -92,7 +92,7 @@ bot.on('entityHurt',(entity,source)=>{if(entity?.id===bot.entity?.id)send('minec
 bot.on('sleep',()=>send('minecraft.sleep',{sleeping:true,timeOfDay:bot.time?.timeOfDay}))
 bot.on('wake',()=>send('minecraft.sleep',{sleeping:false,timeOfDay:bot.time?.timeOfDay}))
 bot.on('physicsTick', () => {
-  if (!autonomousMove || !bot.entity || !bot.entity.onGround) return
+  if (!autonomousMove || autonomousMove.skill === 'embodied' || !bot.entity || !bot.entity.onGround) return
   const proximity = motorProximity(bot, 0.65)
   if (proximity.hazardAhead || ((!proximity.supportedAhead || proximity.obstructedAhead) && !(autonomousMove.jump && proximity.canStepUp))) {
     const commandId = autonomousMove.id
@@ -152,6 +152,9 @@ input.on('line', async line => {
       stop()
       const before = { x: bot.entity.position.x, y: bot.entity.position.y, z: bot.entity.position.z }
       busy = true
+      const stepEpoch = actionEpoch
+      if (command.target) await require('./directed-step').orient(bot, command)
+      if (closing || !ready || actionEpoch !== stepEpoch || Date.now()-lastHeartbeat>config.leaseMs) throw Error('Directed step cancelled')
       if (command.skill && command.control === 'forward') autonomousMove = command
       bot.setControlState(command.control, true)
       if (command.jump) bot.setControlState('jump', true)
@@ -159,7 +162,7 @@ input.on('line', async line => {
       stop()
       busy = false
       send('minecraft.action_result', { command_id: command.id, action: command.action, control: command.control, before,
-        position: { x: bot.entity.position.x, y: bot.entity.position.y, z: bot.entity.position.z },
+        position: { x: bot.entity.position.x, y: bot.entity.position.y, z: bot.entity.position.z }, after: proprioception(bot),
         contact: Boolean(bot.entity.isCollidedHorizontally) })
       return
     } else if (command.action === 'look') {

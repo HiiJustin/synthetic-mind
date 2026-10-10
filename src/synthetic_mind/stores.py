@@ -24,6 +24,13 @@ def state_patch(before: Any, after: Any, path: tuple = ()) -> list[dict]:
         for key, value in after.items():
             changes.extend(state_patch(before[key], value, path + (key,)) if key in before else [{"path": list(path + (key,)), "value": value}])
         return changes
+    if isinstance(before,list) and isinstance(after,list) and len(before)<=128 and len(after)<=128:
+        # Rolling histories shift by one: trace removals/appends, not 128 changed episodes.
+        for removed in range(min(16,len(before))+1):
+            remaining=before[removed:]
+            if remaining and len(remaining)<=len(after) and remaining==after[:len(remaining)]:
+                return ([{'path':list(path+(0,)),'remove':True} for _ in range(removed)] +
+                        [{'path':list(path+(i,)),'value':after[i]} for i in range(len(remaining),len(after))])
     if isinstance(before, list) and isinstance(after, list) and len(before) == len(after) and len(after) <= 128:
         return [change for index, value in enumerate(after) for change in state_patch(before[index], value, path + (index,))]
     return [{"path": list(path), "value": after}]

@@ -166,7 +166,7 @@ class MinecraftEngine(Engine):
     async def start(self) -> None:
         async with self.lock:
             self.bus.publish(CognitiveEvent("runtime", "runtime.boot", {"identity_id": self.self_model.load().identity_id,
-                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.17.0", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
+                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.19.0", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
             await self.bus.drain()
 
     def status(self) -> dict:

@@ -19,7 +19,7 @@ from synthetic_mind.operator_control import enqueue
 CONTROL_LOCK = threading.Lock()
 STREAM_COUNTS = {}
 
-NAMESPACES = ('runtime.active_modules','embodied.enabled','embodied.prediction','embodied.prediction_error','embodied.workspace','embodied.feedback','embodied.selection','embodied.goal_state','embodied.deaths','adaptation.progress','adaptation.feedback','adaptation.actions','operator.last_control','learning.enabled','survival.food_status','survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
+NAMESPACES = ('embodied.autonomous_goal','embodied.autonomous_history','brain.role_models','embodied.attention','embodied.progress_review','runtime.active_modules','embodied.enabled','embodied.prediction','embodied.prediction_error','embodied.workspace','embodied.feedback','embodied.selection','embodied.goal_state','embodied.deaths','adaptation.progress','adaptation.feedback','adaptation.actions','operator.last_control','learning.enabled','survival.food_status','survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
               'minecraft.sensed_at', 'minecraft.world_id', 'cognition.drives', 'council.winner',
               'council.disagreements', 'council.blocked_reason', 'sensorimotor.models', 'sensorimotor.latest',
               'sensorimotor.discovery', 'sensorimotor.developmental', 'learning.last_lesson',

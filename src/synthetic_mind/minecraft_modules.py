@@ -149,6 +149,8 @@ class MinecraftCritic:
             allowed = content.get("channel") in self.state.get("minecraft.connection", {}).get("muscle_channels", [f"m{i}" for i in range(13)]) and content.get("duration_ms", 350) in (350, 1800, 3500)
         elif action == "move":
             allowed = content.get("control") in CONTROLS
+            if content.get("target"):
+                allowed = allowed and any(b.get("position")==content["target"] and ("entity_id" not in content or b.get("id")==content["entity_id"]) for b in self.state.get("minecraft.sensed",{}).get("visibleEntities" if "entity_id" in content else "visibleBlocks",[])) and type(content.get("yaw")) in (float,int) and math.isfinite(content["yaw"])
         elif action == "look":
             allowed = all(type(content.get(key)) in (float, int) and math.isfinite(content[key]) for key in ("yaw", "pitch")) and abs(content["pitch"]) <= math.pi / 2
         elif action in ROUTINES:

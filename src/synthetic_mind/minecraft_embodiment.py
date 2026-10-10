@@ -13,8 +13,8 @@ def normalize(sensed):
     view=(round(math.atan2(math.sin(orient.get('yaw',0)),math.cos(orient.get('yaw',0)))/.5),round(orient.get('pitch',0)/.3))
     counts=dict(Counter(b['name'] for b in blocks));resources={}
     for item in sensed.get('inventory',[]):resources[item['name']]=resources.get(item['name'],0)+item['count']
-    objects=[{'id':b.get('id'), 'type':b['name'],'kind':'block','position':b['position'],'distance':b.get('distance'),'relative':b.get('relative'),'observed':True} for b in blocks]
-    objects += [{'id':e['id'],'type':e['type'],'kind':'entity','position':e.get('position'),'distance':e.get('distance'),'observed':True} for e in entities]
+    objects=[{'id':b.get('id'), 'type':b['name'],'kind':'block','position':b['position'],'distance':b.get('distance'),'relative':b.get('relative'),'resources':b.get('knownDrops',[]),'observed':True} for b in blocks]
+    objects += [{'id':e['id'],'type':e['type'],'kind':'entity','position':e.get('position'),'distance':e.get('distance'),'resources':[e['item']['name']] if e.get('item') else [],'observed':True} for e in entities]
     # Preserve type diversity before repeated surfaces fill working memory.
     frequencies=Counter(obj['type'] for obj in objects)
     objects.sort(key=lambda obj: (frequencies[obj['type']],obj.get('distance') or 0))
@@ -58,7 +58,8 @@ class MinecraftEmbodiment:
         record=next((h for h in s.get('embodied.eligibility',[]) if h['id']==c.get('command_id')),None)
         if not record:return []
         after=c.get('muscle_after') or c.get('after') or {}
-        resources={i['name']:i['count'] for i in after.get('inventory',[])}
+        resources={}
+        for item in after.get('inventory',[]):resources[item['name']]=resources.get(item['name'],0)+item['count']
         # A missing result snapshot is unknown, never an empty backpack.
         if 'inventory' not in after:resources=record['before'].get('resources',{})
         effects={'resources':resources,'held':after.get('held'),'target':after.get('target'), 'position':after.get('position',c.get('position')),
@@ -67,8 +68,13 @@ class MinecraftEmbodiment:
         numeric={f'resource:{k}':resources.get(k,0)-record['before'].get('resources',{}).get(k,0) for k in resources.keys() | record['before'].get('resources',{}).keys()}
         for name,scale in (('food',20),('health',20),('yaw',1),('pitch',1)):
             if name in after and name in before:numeric[name]=(after[name]-before[name])/scale
+        if all(k in before for k in ('x','y','z')) and after.get('position'):
+            before={**before,'position':{k:before[k] for k in ('x','y','z')}}
+        if before.get('position') and after.get('position'):
+            numeric['distance']=math.dist([before['position'][k] for k in ('x','y','z')],[after['position'][k] for k in ('x','y','z')])
         effects['measured']=numeric
-        changed=resources!=record['before'].get('resources',{}) or any(after.get(k)!=before.get(k) for k in ('held','yaw','pitch','position','target') if k in after)
+        changed=resources!=record['before'].get('resources',{}) or any(after.get(k)!=before.get(k) for k in ('held','yaw','pitch','position','target') if k in after and k in before)
+        changed=changed or (c.get('verified') is True and c.get('block_after') is not None)
         failed=event.kind=='minecraft.command_error' or c.get('verified') is False
         return [CognitiveEvent(self.name,'embodied.result',{'id':c['command_id'],'after':{'resources':resources},'effects':effects,'changed':changed,'failed':failed,
             'information':0,'error':c.get('message')})]
@@ -92,13 +98,26 @@ class MinecraftEmbodiment:
         # Affordances express possibilities. Their selection belongs to the generic learner.
         seen=set()
         for block in obs.get('visibleBlocks',[]):
-            if block.get('distance',999)>4 or block['name'] in seen:continue
+            if block['name'] in seen:continue
+            if block.get('distance',999)>3:
+                target=block['position'];pos=obs.get('position',{})
+                dx=target['x']+.5-pos.get('x',0);dz=target['z']+.5-pos.get('z',0)
+                if math.hypot(dx,dz)>1:
+                    add({'action':'move','control':'forward','target':target,'yaw':math.atan2(-dx,-dz),'jump':bool(obs.get('proximity',{}).get('canStepUp'))},
+                        {'toward':block['name'],'jump':bool(obs.get('proximity',{}).get('canStepUp'))},
+                        {'resources':{item:.65 for item in block.get('knownDrops',[])}})
+            if block.get('distance',999)>4:
+                seen.add(block['name']);continue
             seen.add(block['name']);target=block['position']
             add({'action':'dig','target':target,'block':block['name']},{'block':block['name'],'held':held},
                 {'resources':{item:1 for item in block.get('knownDrops',[])}})
             add({'action':'use_block','target':target,'block':block['name']},{'block':block['name'],'held':held})
         for entity in obs.get('visibleEntities',[]):
-            if entity.get('distance',999)<=3:
+            if entity.get('item') and entity.get('position'):
+                target=entity['position'];pos=obs.get('position',{});dx=target['x']-pos.get('x',0);dz=target['z']-pos.get('z',0)
+                add({'action':'move','control':'forward','target':target,'entity_id':entity['id'],'yaw':math.atan2(-dx,-dz)},
+                    {'pickup':entity['item']['name']},{'resources':{entity['item']['name']:.95}})
+            if entity.get('distance',999)<=3 and entity['type'] not in {'item','item_stack','experience_orb','arrow','spectral_arrow','trident','marker','block_display','item_display','text_display','interaction'}:
                 add({'action':'strike','entity_id':entity['id']},{'target_type':entity['type'],'held':held})
         for recipe in obs.get('recipes',[]):
             if recipe.get('craftable'):

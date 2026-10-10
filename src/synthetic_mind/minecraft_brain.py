@@ -64,7 +64,10 @@ class MinecraftBrain:
     """One shared inference worker; never awaits a model while holding a DB transaction or engine lock."""
     def __init__(self, session, config, backend=None):
         self.session, self.engine, self.config = session, session.engine, config
-        self.backend = backend or OllamaModelBackend(config["model"], SCHEMA)
+        roles=config.get('role_models',{})
+        self.backend = backend or OllamaModelBackend(roles.get('planner',config['model']), SCHEMA)
+        self.review_backend = backend or (OllamaModelBackend(roles['critic'], REVIEW_SCHEMA, think=False) if roles.get('critic') and roles['critic']!=roles.get('planner',config['model']) else self.backend)
+        self.engine.state.set('brain.role_models',{'planner':getattr(self.backend,'model','test'),'critic':getattr(self.review_backend,'model','test'),'execution':'sequential; deterministic sensors and motor feedback continue independently'})
         self.cursor = self.engine.db.connection.execute("SELECT coalesce(max(seq),0) FROM events").fetchone()[0]
         self.next_auto = 0.0
         self.task = None
@@ -239,13 +242,13 @@ class MinecraftBrain:
         async with self.engine.lock:
             planned = CognitiveEvent("deliberation_planner", "brain.plan", {**decision, "metrics": planner_metrics}, (request.id,))
             self.engine.bus.publish(planned)
-            review_call = CognitiveEvent("cognitive_critic", "brain.review_inference", {"model": self.config["model"], "reserved_tokens": review_reserve,
+            review_call = CognitiveEvent("cognitive_critic", "brain.review_inference", {"model": getattr(self.review_backend,"model",self.config["model"]), "reserved_tokens": review_reserve,
                 "scene": context["scene"], "body": context["body"], "human_message": text}, (planned.id,))
             self.engine.bus.publish(review_call)
             self.current_request_id = review_call.id
             await self.engine.bus.drain()
         self.engine.governor.total_calls += 1
-        review = await self.engine.registry.modules["cognitive_critic"].review(self.backend, context, decision)
+        review = await self.engine.registry.modules["cognitive_critic"].review(self.review_backend, context, decision)
         async with self.engine.lock:
             state = self.engine.state
             state.set("brain.busy", False)
@@ -253,7 +256,7 @@ class MinecraftBrain:
             state.set("brain.last_error", None)
             state.set("brain.last_decision", decision)
             state.set("brain.last_review", review)
-            reviewed = CognitiveEvent("cognitive_critic", "brain.review", {**review, "metrics": getattr(self.backend, "metrics", {})}, (review_call.id,))
+            reviewed = CognitiveEvent("cognitive_critic", "brain.review", {**review, "metrics": getattr(self.review_backend, "metrics", {})}, (review_call.id,))
             self.engine.bus.publish(reviewed)
             result = CognitiveEvent("deliberation_planner", "brain.decision", {**decision, "approved": review["approved"], "control_epoch":epoch}, (reviewed.id,))
             self.engine.bus.publish(result)

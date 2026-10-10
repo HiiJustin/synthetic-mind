@@ -101,7 +101,11 @@ function observe (bot, config, sequence) {
     const range = distance(eye, target)
     if (range < 0.1 || range > config.visionRange) continue
     const alignment = ((target.x - eye.x) * forward.x + (target.y - eye.y) * forward.y + (target.z - eye.z) * forward.z) / range
-    if (alignment >= halfAngleCos && lineVisible(bot, eye, target)) visibleEntities.push({ id: entity.id, type: entity.name || entity.type || 'entity', position: xyz(entity.position), distance: Number(range.toFixed(2)) })
+    if (alignment >= halfAngleCos && lineVisible(bot, eye, target)) {
+      let item = null
+      try { const drop=entity.getDroppedItem?.(); if(drop)item={name:drop.name,count:drop.count} } catch (_) { /* incomplete metadata is unknown */ }
+      visibleEntities.push({ id: entity.id, type: entity.name || entity.type || 'entity', item, position: xyz(entity.position), relative:{x:target.x-eye.x,y:target.y-eye.y,z:target.z-eye.z}, distance: Number(range.toFixed(2)) })
+    }
   }
   const position = body.position
   return {

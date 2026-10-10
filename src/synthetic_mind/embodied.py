@@ -53,7 +53,7 @@ class OutcomeEvaluator(Module):
         s=self.state;c=event.content;now=time.time();history=s.get('embodied.eligibility',[])
         if event.kind=='embodied.executed':
             history=[h for h in history if now-h['time']<30]
-            history.append({**c,'time':now,'before':s.get('embodied.observation',{})})
+            history.append({**c,'time':now,'before':{k:s.get('embodied.observation',{}).get(k,{}) for k in ('resources','vitals')}})
             s.set('embodied.eligibility',history[-16:]);return []
         if event.kind=='embodied.observation':
             old=s.get('embodied.vitals')
@@ -144,7 +144,7 @@ class GoalMemory(Module):
         for candidate in s.get('embodied.candidates',[]):resources.update(candidate.get('prior',{}).get('resources',{}))
         if autonomous:
             options=sorted(r for r in resources if o.get('resources',{}).get(r,0)==0 and any(c.get('prior',{}).get('resources',{}).get(r,0)>0 for c in s.get('embodied.candidates',[])))
-            goal=('Collect 1 '+options[0].replace('_',' ')) if options else 'Explore and measure an unfamiliar action'
+            goal=s.get('embodied.autonomous_goal',{}).get('text') or (('Collect 1 '+options[0].replace('_',' ')) if options else 'Explore and measure an unfamiliar action')
         words=set(re.findall(r'[a-z0-9]+',goal.lower()))
         words.update(w[:-1] for w in list(words) if w.endswith('s'))
         amount=re.search(r'\b(?:collect|gather|obtain|get)\s+(\d+)\b',goal.lower())
@@ -169,12 +169,12 @@ class GoalMemory(Module):
 
 
 class WorkspaceIntegrator(Module):
-    name,priority,subscriptions='subconscious_workspace',45,{'subconscious.perceived','subconscious.evaluated'}
+    name,priority,subscriptions='subconscious_workspace',45,{'attention.selected','subconscious.evaluated','subconscious.progress_reviewed'}
     async def on_event(self,event):
         s=self.state;o=s.get('embodied.observation',{});p=s.get('embodied.perception',{})
         summary={'needs':o.get('needs',{}),'novelty':p.get('novelty',0),'uncertainty':p.get('uncertainty',[]),
             'goal':s.get('embodied.goal_state',{}),'recent_feedback':{k:s.get('embodied.feedback',{}).get(k) for k in ('score','components','kind')},
-            'working_objects':p.get('objects',[])[:8],'evidence_id':event.id}
+            'working_objects':s.get('embodied.attention',{}).get('objects',[])[:8],'evidence_id':event.id}
         s.set('embodied.workspace',summary)
         return [CognitiveEvent(self.name,'workspace.embodied',summary)]
 
@@ -203,9 +203,12 @@ class ActionSelector(Module):
             score=calibrated_value+.7*uncertainty+need+goal+gain-.22*repeats-.12*min(8,no_effect)-.3*r.get('failures',0)/(1+n)
             hypothesis=s.get('embodied.hypothesis',{})
             advice=.5*hypothesis.get('confidence',0) if hypothesis.get('key')==key and now-hypothesis.get('time',0)<30 else 0
-            score+=advice
+            from .attention import ProgressReview
+            trial=s.get('embodied.trial_review',{}).get(ProgressReview.site(candidate),{})
+            trial_penalty=trial.get('penalty',0)*max(0,1-(now-trial.get('time',0))/120)
+            score+=advice-trial_penalty
             score-=candidate.get('cost',.05)
-            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'learned':calibrated_value,'prediction_reliability':reliability,'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats,'deliberation':advice,'uncertainty_bonus':.7*uncertainty,'repetition_penalty':-.22*repeats,'no_effect_penalty':-.12*min(8,no_effect),'failure_penalty':-.3*r.get('failures',0)/(1+n),'action_cost':-candidate.get('cost',.05)}})
+            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'trial_penalty':-trial_penalty,'learned':calibrated_value,'prediction_reliability':reliability,'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats,'deliberation':advice,'uncertainty_bonus':.7*uncertainty,'repetition_penalty':-.22*repeats,'no_effect_penalty':-.12*min(8,no_effect),'failure_penalty':-.3*r.get('failures',0)/(1+n),'action_cost':-candidate.get('cost',.05)}})
         if not ranked:return []
         ranked.sort(key=lambda r:(r['score'],r['key']),reverse=True);winner=ranked[0]
         s.set('embodied.selection',{'winner':winner,'alternatives':ranked[1:5],'time':now})
@@ -215,4 +218,5 @@ class ActionSelector(Module):
 
 def modules(state):
     from .expectations import OutcomePrediction
-    return [PerceptualMemory(state),OutcomeEvaluator(state),OutcomePrediction(state),WorldModel(state),GoalMemory(state),WorkspaceIntegrator(state),ActionSelector(state)]
+    from .attention import SelectiveAttention, ProgressReview, AutonomousGoals
+    return [PerceptualMemory(state),OutcomeEvaluator(state),OutcomePrediction(state),WorldModel(state),AutonomousGoals(state),GoalMemory(state),SelectiveAttention(state),ProgressReview(state),WorkspaceIntegrator(state),ActionSelector(state)]
