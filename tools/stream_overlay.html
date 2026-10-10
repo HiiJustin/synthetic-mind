@@ -27,7 +27,7 @@
 
 .brain-layout{display:flex;align-items:center;gap:16px}.brain-layout svg{width:65%;max-height:260px}.brain-legend{font-size:12px;line-height:2;color:#9cb9c8}.control-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.control-buttons button{padding:12px 18px;font-size:14px}input[type=text]{background:#101822;border:1px solid #51647b;border-radius:6px;padding:12px;color:white;width:75%}.control-message{min-height:24px;color:#a9e6cb}
 
-.brain-panel{left:28px;top:120px;width:440px;padding:16px;height:300px}.brain-panel .brain-layout svg{max-height:200px}.brain-panel small{font-size:10px;color:#9cb9c8}
+.brain-panel{left:28px;top:120px;width:610px;padding:16px;height:530px;pointer-events:auto}.brain-panel .mind-node text{font-size:14px!important}.brain-panel .mind-detail,.brain-panel .mind-note{display:none}.brain-panel .mind-top{font-size:10px}.brain-panel .mind-top>div:last-child{display:none}.brain-panel .mind-legend{font-size:10px}.brain-panel .brain-layout svg{max-height:200px}.brain-panel small{font-size:10px;color:#9cb9c8}
 </style>
 </head>
 <body>
@@ -83,7 +83,7 @@ async function update(){try{
  const response=await fetch(endpoint,{cache:'no-store'});if(!response.ok)throw Error('Telemetry unavailable');
  const d=await response.json(),s=d.state,b=s['minecraft.sensed']||{},w=s['council.winner']||{},models=s['sensorimotor.models']||{};
  const age=d.server_time-(s['minecraft.sensed_at']||0),online=!!s['minecraft.connection']?.connected&&age<5;
- MindMap.update(d.health,online);put('progressInfo',s['embodied.enabled']?'Embodied modules: sensing, evaluating, selecting':s['adaptation.progress']?.status||'Awaiting observations');
+ MindMap.update(d.health,online,d.activity,s);put('progressInfo',s['embodied.enabled']?'Embodied modules: sensing, evaluating, selecting':s['adaptation.progress']?.status||'Awaiting observations');
  put('online',online?'CONNECTED':'OFFLINE / STALE');document.querySelector('.badge').textContent=online?'LIVE TELEMETRY':'FEED STALE';
  put('mode',online?(s['minecraft.autonomous']?'AUTONOMOUS':'PAUSED'):'DISCONNECTED');
  put('goal',s['brain.goal']||'No objective recorded');

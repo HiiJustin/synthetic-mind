@@ -143,6 +143,7 @@ class MinecraftEngine(Engine):
             from .embodied import modules
             from .minecraft_embodiment import MinecraftEmbodiment
             for agent in [MinecraftEmbodiment(self.state), *modules(self.state)]: self.registry.register(agent)
+            self.state.set("embodied.prediction_pending", {})
             self.state.set("embodied.eligibility", [])
             self.state.set("embodied.candidates", [])
             self.state.set("embodied.vitals", None)
@@ -165,12 +166,12 @@ class MinecraftEngine(Engine):
     async def start(self) -> None:
         async with self.lock:
             self.bus.publish(CognitiveEvent("runtime", "runtime.boot", {"identity_id": self.self_model.load().identity_id,
-                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.16.0", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
+                "previous_seen_at": self.start_previous_seen, "environment": "minecraft", "version": "0.17.0", "backend": self.brain_config.get("model", "mock-unused"), "world_id": self.state.get("minecraft.world_id")}))
             await self.bus.drain()
 
     def status(self) -> dict:
         status = super().status()
-        status.update({"version": "0.16.0-minecraft", "environment": "minecraft", "tempo": self.tempo, "connection": self.state.get("minecraft.connection", {}),
+        status.update({"version": "0.17.0-minecraft", "environment": "minecraft", "tempo": self.tempo, "connection": self.state.get("minecraft.connection", {}),
                        "council": {"winner": self.state.get("council.winner"), "alternatives": self.state.get("council.disagreements", []),
                            "skills": self.state.get("council.skills", {}), "reflection": self.state.get("council.reflection"),
                            "blocked_reason": self.state.get("council.blocked_reason"), "spatial_sectors": len(self.state.get("council.spatial", {}).get("visits", {}))},

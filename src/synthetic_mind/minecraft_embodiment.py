@@ -59,7 +59,7 @@ class MinecraftEmbodiment:
         effects={'resources':resources,'held':after.get('held'),'target':after.get('target'), 'position':after.get('position',c.get('position')),
             'yaw':after.get('yaw'),'pitch':after.get('pitch'),'block_after':c.get('block_after')}
         before=c.get('muscle_before') or c.get('before') or {}
-        numeric={f'resource:{k}':v-record['before'].get('resources',{}).get(k,0) for k,v in resources.items()}
+        numeric={f'resource:{k}':resources.get(k,0)-record['before'].get('resources',{}).get(k,0) for k in resources.keys() | record['before'].get('resources',{}).keys()}
         for name,scale in (('food',20),('health',20),('yaw',1),('pitch',1)):
             if name in after and name in before:numeric[name]=(after[name]-before[name])/scale
         effects['measured']=numeric

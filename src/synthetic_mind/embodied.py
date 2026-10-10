@@ -109,7 +109,12 @@ class WorldModel(Module):
             r['samples']+=1;r['failures']+=int(c.get('failed',False));r['last_trial']=time.time()
             r['no_effect']=r.get('no_effect',0)+1 if not c.get('changed') else 0
             means=r.get('mean_effects',{})
-            for k,v in c.get('effects',{}).get('measured',{}).items():means[k]=means.get(k,0)+(v-means.get(k,0))/r['samples']
+            counts=r.get('effect_counts',{});m2=r.get('effect_m2',{})
+            for k,v in c.get('effects',{}).get('measured',{}).items():
+                counts[k]=counts.get(k,0)+1
+                delta=v-means.get(k,0);means[k]=means.get(k,0)+delta/counts[k]
+                m2[k]=m2.get(k,0)+delta*(v-means[k])
+            r['effect_counts']=counts;r['effect_m2']=m2
             r['mean_effects']=means
             r['effects']=c.get('effects',{});r['evidence']=event.id;r['family']=record['family'];models[key]=r
             # Procedural records contain actual parameters and measured outcomes, not generated claims.
@@ -178,12 +183,14 @@ class ActionSelector(Module):
             goal+=sum(relevant.get(k[9:],0)*max(0,v) for k,v in effects.items() if k.startswith('resource:'))
             need+=4*o.get('needs',{}).get('energy',0)*effects.get('food',0)
             gain=candidate.get('information',0)/(1+repeats) if s.get('learning.enabled',True) else 0
-            score=r.get('value',0)+.7*uncertainty+need+goal+gain-.22*repeats-.12*min(8,no_effect)-.3*r.get('failures',0)/(1+n)
+            reliability=1/(1+s.get('embodied.prediction_quality',{}).get(key,{}).get('error',0))
+            calibrated_value=min(0,r.get('value',0))+max(0,r.get('value',0))*reliability
+            score=calibrated_value+.7*uncertainty+need+goal+gain-.22*repeats-.12*min(8,no_effect)-.3*r.get('failures',0)/(1+n)
             hypothesis=s.get('embodied.hypothesis',{})
             advice=.5*hypothesis.get('confidence',0) if hypothesis.get('key')==key and now-hypothesis.get('time',0)<30 else 0
             score+=advice
             score-=candidate.get('cost',.05)
-            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'learned':r.get('value',0),'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats,'deliberation':advice}})
+            ranked.append({'candidate':candidate,'key':key,'score':score,'terms':{'learned':calibrated_value,'prediction_reliability':reliability,'uncertainty':uncertainty,'need':need,'goal':goal,'information':gain,'repeats':repeats,'deliberation':advice,'uncertainty_bonus':.7*uncertainty,'repetition_penalty':-.22*repeats,'no_effect_penalty':-.12*min(8,no_effect),'failure_penalty':-.3*r.get('failures',0)/(1+n),'action_cost':-candidate.get('cost',.05)}})
         if not ranked:return []
         ranked.sort(key=lambda r:(r['score'],r['key']),reverse=True);winner=ranked[0]
         s.set('embodied.selection',{'winner':winner,'alternatives':ranked[1:5],'time':now})
@@ -192,4 +199,5 @@ class ActionSelector(Module):
 
 
 def modules(state):
-    return [PerceptualMemory(state),OutcomeEvaluator(state),WorldModel(state),GoalMemory(state),WorkspaceIntegrator(state),ActionSelector(state)]
+    from .expectations import OutcomePrediction
+    return [PerceptualMemory(state),OutcomeEvaluator(state),OutcomePrediction(state),WorldModel(state),GoalMemory(state),WorkspaceIntegrator(state),ActionSelector(state)]

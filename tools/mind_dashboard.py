@@ -13,11 +13,13 @@ from urllib.parse import urlsplit, parse_qs
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
+sys.path.insert(0,str(ROOT/'tools'))
+from module_observatory import activity, explanation
 from synthetic_mind.operator_control import enqueue
 CONTROL_LOCK = threading.Lock()
 STREAM_COUNTS = {}
 
-NAMESPACES = ('runtime.active_modules','embodied.enabled','embodied.workspace','embodied.feedback','embodied.selection','embodied.goal_state','embodied.deaths','adaptation.progress','adaptation.feedback','adaptation.actions','operator.last_control','learning.enabled','survival.food_status','survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
+NAMESPACES = ('runtime.active_modules','embodied.enabled','embodied.prediction','embodied.prediction_error','embodied.workspace','embodied.feedback','embodied.selection','embodied.goal_state','embodied.deaths','adaptation.progress','adaptation.feedback','adaptation.actions','operator.last_control','learning.enabled','survival.food_status','survival.enabled', 'survival.status', 'survival.latest', 'survival.dangers', 'survival.deaths', 'survival.build', 'survival.sleeping', 'survival.weapon_trials', 'self_model', 'minecraft.sensed', 'minecraft.connection', 'minecraft.autonomous',
               'minecraft.sensed_at', 'minecraft.world_id', 'cognition.drives', 'council.winner',
               'council.disagreements', 'council.blocked_reason', 'sensorimotor.models', 'sensorimotor.latest',
               'sensorimotor.discovery', 'sensorimotor.developmental', 'learning.last_lesson',
@@ -33,7 +35,7 @@ def read_snapshot(database):
         health = {name[7:]: json.loads(value) for name, value in db.execute("SELECT namespace,value FROM state WHERE namespace LIKE 'health.%'")}
         active=state.get('runtime.active_modules')
         if active: health={name:value for name,value in health.items() if name in active}
-        return {'state': state, 'events': events, 'health': health, 'database_bytes': database.stat().st_size}
+        return {'state': state, 'events': events, 'health': health, 'activity':activity(db,active or health.keys()), 'explanation':explanation(state), 'server_time':time.time(), 'database_bytes': database.stat().st_size}
 
 
 def read_stream(database):
